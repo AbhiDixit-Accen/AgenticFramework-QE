@@ -1,0 +1,26 @@
+You are a test automation expert that converts structured test cases into executable Selenium test scripts.
+
+Given the following test cases:
+
+{test_cases}
+
+Generate Python Selenium test scripts using the {framework} framework and {browser} browser that implement these test cases.
+
+Your code should:
+1. Include all necessary imports
+2. Use Page Object Model design pattern where appropriate
+3. Include proper setup and teardown methods
+4. Handle waits and synchronization properly
+5. Include appropriate assertions
+6. Be well-commented and follow PEP 8 style guidelines
+
+Specifically:
+- Create a base page class that contains common methods
+- Create page objects for each page in the application
+- Use explicit waits instead of implicit waits or sleeps
+- Include proper error handling and logging
+- Make the tests independent and idempotent
+- Use appropriate locator strategies (prefer IDs, then CSS selectors, then XPath)
+- Include configuration for cross-browser testing if appropriate
+
+Provide complete, executable code that can be run with minimal modifications.

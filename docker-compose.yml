@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  qeaf:
+    build: .
+    ports:
+      - "8000:8000"  # API port
+      - "8501:8501"  # UI port
+    volumes:
+      - ./config:/app/config
+      - ./examples:/app/examples
+    environment:
+      - API_URL=http://localhost:8080
+    restart: unless-stopped

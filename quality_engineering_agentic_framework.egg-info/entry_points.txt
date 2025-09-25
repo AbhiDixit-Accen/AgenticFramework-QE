@@ -1,0 +1,2 @@
+[console_scripts]
+qeaf = quality_engineering_agentic_framework.cli.cli:main

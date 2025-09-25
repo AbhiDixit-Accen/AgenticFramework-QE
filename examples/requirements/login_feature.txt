@@ -1,0 +1,18 @@
+Feature: User Authentication System
+
+As a user of the application
+I want to be able to log in with my credentials
+So that I can access my account and use the application
+
+Requirements:
+
+1. The login page should have fields for username/email and password.
+2. Users should be able to log in with either their username or email address.
+3. The system should validate that the username/email and password match a user in the database.
+4. If login credentials are incorrect, an appropriate error message should be displayed.
+5. After 3 failed login attempts, the account should be temporarily locked for 15 minutes.
+6. Users should have the option to reset their password if they forget it.
+7. The system should support "Remember Me" functionality to keep users logged in across sessions.
+8. Passwords must be transmitted securely and not stored in plain text.
+9. The login page should be accessible and work on mobile devices.
+10. Users should be redirected to their dashboard after successful login.

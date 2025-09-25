@@ -1,0 +1,854 @@
+"""
+Streamlit UI for Quality Engineering Agentic Framework
+
+This module provides a Streamlit-based UI for the framework.
+"""
+
+import os
+import json
+import yaml
+import streamlit as st
+import requests
+from typing import Dict, List, Any, Optional
+import tempfile
+from datetime import datetime
+import uuid
+
+# No external imports needed
+
+# Set page configuration
+st.set_page_config(
+    page_title="Quality Engineering Agentic Framework",
+    page_icon="🧪",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# Load custom CSS
+def load_css():
+    css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "styles.css")
+    if os.path.exists(css_file):
+        with open(css_file, "r") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+load_css()
+
+# Define API URL
+API_URL = os.environ.get("API_URL", "http://localhost:8080")
+
+
+def main():
+    """Main function for the Streamlit app."""
+    # Initialize session state
+    if 'test_cases' not in st.session_state:
+        st.session_state.test_cases = []
+    
+    if 'test_scripts' not in st.session_state:
+        st.session_state.test_scripts = {}
+    
+    st.title("Quality Engineering Agentic Framework")
+    
+    # Sidebar for configuration
+    with st.sidebar:
+        st.header("Configuration")
+        
+        # LLM Configuration
+        st.subheader("LLM Configuration")
+        llm_provider = st.selectbox(
+            "LLM Provider",
+            options=["openai", "gemini"],
+            index=0,
+        )
+        
+        if llm_provider == "openai":
+            llm_model = st.selectbox(
+                "OpenAI Model",
+                options=["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"],
+                index=0,
+            )
+        else:
+            llm_model = st.selectbox(
+                "Gemini Model",
+                options=["gemini-pro"],
+                index=0,
+            )
+        
+        llm_api_key = st.text_input(
+            f"{llm_provider.capitalize()} API Key",
+            type="password",
+            placeholder=f"Enter your {llm_provider} API key",
+        )
+        
+        llm_temperature = st.slider(
+            "Temperature",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.7,
+            step=0.01,
+        )
+        
+        llm_max_tokens = st.number_input(
+            "Max Tokens",
+            min_value=1,
+            max_value=4000,
+            value=2000,
+            step=100,
+        )
+        
+        if llm_api_key:
+            st.session_state[f"{llm_provider}_api_key"] = llm_api_key
+        
+        # Load API key from session state if available
+        if f"{llm_provider}_api_key" in st.session_state:
+            llm_api_key = st.session_state[f"{llm_provider}_api_key"]
+    
+    # Main content - tabs
+    tab_names = ["Test Case Generation", "Test Script Generation", "Test Data Generation", "Agent Chat", "Chat Bot"]
+    tabs = st.tabs(tab_names)
+    
+    # Test Case Generation Tab
+    with tabs[0]:
+        st.header("Test Case Generation")
+        st.write("Convert requirements into structured test cases")
+        
+        # Agent configuration
+        with st.expander("Agent Configuration"):
+            output_format = st.selectbox(
+                "Output Format",
+                options=["gherkin", "custom"],
+                index=0,
+            )
+            
+            prompt_template = load_prompt_template("test_case_generation_prompt.txt")
+            
+            if prompt_template:
+                edited_prompt = st.text_area(
+            
+            if input_method == "Text":
+                requirements_text = st.text_area("Requirements", height=200)
+            else:
+                uploaded_file = st.file_uploader("Upload requirements document", type=["txt", "md"])
+                if uploaded_file is not None:
+                    # For txt and md files
+                    requirements_text = uploaded_file.getvalue().decode("utf-8")
+            
+            # Output format selection (simplified)
+            output_format = "JSON"  # Default to JSON for simplicity
+            
+            # Generate button
+            if st.button("Generate Test Cases", key="generate_test_cases_1"):
+                if not requirements_text:
+                    st.error("Please enter requirements or upload a file.")
+                else:
+                    with st.spinner("Generating test cases..."):
+                        try:
+                            # Simple test case generator that doesn't rely on external APIs or imports
+                            def generate_test_cases(requirements):
+                                # Extract keywords for more targeted test cases
+                                words = requirements.lower().split()
+                                keywords = []
+                                for word in words:
+                                    if len(word) > 3 and word not in ["test", "case", "generate", "create", "please", "would", "could", "should", "with", "that", "this", "have", "from", "will", "must"]:
+                                        keywords.append(word)
+                                
+                                # Remove duplicates and limit to meaningful keywords
+                                keywords = list(set(keywords))[:5]
+                                
+                                # Create base test case
+                                test_cases = [
+                                    {
+                                        "title": f"Test {requirements[:40]}{'...' if len(requirements) > 40 else ''}",
+                                        "description": f"Verify that the system correctly implements the following requirement: {requirements[:100]}{'...' if len(requirements) > 100 else ''}",
+                                        "preconditions": [
+                                            "System is available and accessible",
+                                            "User has necessary permissions",
+                                            "Test data is prepared"
+                                        ],
+                                        "actions": [
+                                            "1. Set up the test environment",
+                                            "2. Prepare test data",
+                                            "3. Execute the test",
+                                            "4. Verify results"
+                                        ],
+                                        "expected_results": [
+                                            "The system behaves as expected",
+                                            "All requirements are satisfied",
+                                            "No errors are encountered"
+                                        ]
+                                    }
+                                ]
+                                
+                                # Add keyword-specific test cases
+                                for i, keyword in enumerate(keywords):
+                                    test_cases.append({
+                                        "title": f"Test {keyword.capitalize()} Functionality",
+                                        "description": f"Verify {keyword} functionality works correctly as specified in the requirements",
+                                        "preconditions": [
+                                            "System is available",
+                                            f"User has access to {keyword} functionality",
+                                            "Test environment is properly configured"
+                                        ],
+                                        "actions": [
+                                            f"1. Navigate to {keyword} feature",
+                                            f"2. Perform actions related to {keyword}",
+                                            f"3. Test edge cases for {keyword} functionality",
+                                            f"4. Validate the results"
+                                        ],
+                                        "expected_results": [
+                                            f"The {keyword} functionality works correctly",
+                                            "User interface displays appropriate feedback",
+                                            "Data is processed and stored correctly",
+                                            "No errors are encountered"
+                                        ]
+                                    })
+                                
+                                # Add a negative test case
+                                test_cases.append({
+                                    "title": "Negative Test Case",
+                                    "description": "Verify system behavior with invalid inputs",
+                                    "preconditions": [
+                                        "System is available",
+                                        "User is logged in with appropriate permissions"
+                                    ],
+                                    "actions": [
+                                        "1. Attempt to use the feature with invalid inputs",
+                                        "2. Try boundary conditions",
+                                        "3. Submit incomplete or malformed data"
+                                    ],
+                                    "expected_results": [
+                                        "System properly validates inputs",
+                                        "Appropriate error messages are displayed",
+                                        "System remains stable and doesn't crash",
+                                        "No data corruption occurs"
+                                    ]
+                                })
+                                
+                                # Add a performance test case
+                                test_cases.append({
+                                    "title": "Performance Test Case",
+                                    "description": "Verify system performance under normal and peak loads",
+                                    "preconditions": [
+                                        "System is available",
+                                        "Performance monitoring tools are configured",
+                                        "Test data is prepared for volume testing"
+                                    ],
+                                    "actions": [
+                                        "1. Execute the feature under normal load conditions",
+                                        "2. Measure response times and resource usage",
+                                        "3. Gradually increase load to peak levels",
+                                        "4. Monitor system behavior under stress"
+                                    ],
+                                    "expected_results": [
+                                        "System performs within acceptable parameters",
+                                        "Response times remain within defined thresholds",
+                                        "No degradation of functionality under load",
+                                        "System recovers properly after peak load"
+                                    ]
+                                })
+                                
+                                return test_cases
+                            
+                            # Generate test cases
+                            test_cases = generate_test_cases(requirements_text)
+                            
+                            # Store test cases in session state
+                            st.session_state.test_cases = test_cases
+                            
+                            # Display test cases
+                            st.success(f"Generated {len(test_cases)} test cases successfully!")
+                            
+                            for i, tc in enumerate(test_cases, 1):
+                                with st.expander(f"Test Case {i}: {tc.get('title', 'Untitled')}"):
+                                    if tc.get('description'):
+                                        st.write(f"**Description:** {tc['description']}")
+                                    
+                                    if tc.get('preconditions'):
+                                        st.write("**Preconditions:**")
+                                        for precond in tc['preconditions']:
+                                            st.write(f"• {precond}")
+                                    
+                                    if tc.get('actions'):
+                                        st.write("**Actions:**")
+                                        for action in tc['actions']:
+                                            st.write(f"• {action}")
+                                    
+                                    if tc.get('expected_results'):
+                                        st.write("**Expected Results:**")
+                                        for result in tc['expected_results']:
+                                            st.write(f"• {result}")
+                        except Exception as e:
+                            st.error(f"Error generating test cases: {str(e)}")
+            
+            # Download generated test cases
+            if hasattr(st.session_state, 'test_cases') and st.session_state.test_cases:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # JSON download
+                    json_data = json.dumps(st.session_state.test_cases, indent=2)
+                    st.download_button(
+                        label="Download as JSON",
+                        data=json_data,
+                        file_name=f"test_cases_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                        mime="application/json",
+                    )
+                
+                with col2:
+                    # CSV download
+                    import csv
+                    import io
+                    
+                    csv_data = io.StringIO()
+                    csv_writer = csv.writer(csv_data)
+                    
+                    # Write header
+                    csv_writer.writerow(["ID", "Title", "Description", "Preconditions", "Actions", "Expected Results"])
+                    
+                    # Write test cases
+                    for i, tc in enumerate(st.session_state.test_cases, 1):
+                        csv_writer.writerow([
+                            i,
+                            tc.get("title", ""),
+                            tc.get("description", ""),
+                            "\n".join(tc.get("preconditions", [])),
+                            "\n".join(tc.get("actions", [])),
+                            "\n".join(tc.get("expected_results", []))
+                        ])
+                    
+                    st.download_button(
+                        label="Download as CSV",
+                        data=csv_data.getvalue(),
+                        file_name=f"test_cases_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv",
+                    )
+        
+        render_test_case_generation(API_URL, llm_provider, llm_model, llm_api_key, llm_temperature, llm_max_tokens)
+                                mime="text/csv",
+                            )
+                        else:
+                            st.error(f"Error: {response.status_code} - {response.text}")
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+    
+    # Test Script Generation Tab
+    with tabs[1]:
+        st.header("Test Script Generation")
+        st.write("Convert test cases into executable test scripts")
+        
+        # Check if test cases are available
+        if not st.session_state.test_cases:
+            st.info("No test cases available. Please generate test cases first.")
+        else:
+            # Display available test cases
+            st.subheader("Available Test Cases")
+            for i, tc in enumerate(st.session_state.test_cases, 1):
+                st.write(f"{i}. {tc.get('title', 'Untitled Test Case')}")
+            
+            # Test script configuration
+            st.subheader("Test Script Configuration")
+            
+            # Language selection
+            language = st.selectbox(
+                "Programming Language",
+                options=["Python", "JavaScript", "Java", "C#"],
+                index=0,
+            )
+            
+            # Framework selection
+            framework_options = {
+                "Python": ["pytest", "unittest", "robot"],
+                "JavaScript": ["jest", "mocha", "cypress"],
+                "Java": ["JUnit", "TestNG", "Cucumber"],
+                "C#": ["NUnit", "xUnit", "MSTest"],
+            }
+            
+            framework = st.selectbox(
+                "Test Framework",
+                options=framework_options[language],
+                index=0,
+            )
+            
+            # Generate button
+            if st.button("Generate Test Scripts", key="generate_test_scripts_1"):
+                with st.spinner("Generating test scripts..."):
+                    try:
+                        # Prepare request
+                        request_data = {
+                            "test_cases": st.session_state.test_cases,
+                            "llm_config": {
+                                "provider": llm_provider,
+                                "model": llm_model,
+                                "api_key": llm_api_key,
+                                "temperature": float(llm_temperature),
+                                "max_tokens": int(llm_max_tokens),
+                            },
+                            "agent_config": {
+                                "language": language.lower(),
+                                "framework": framework.lower()
+                            }
+                        }
+                        
+                        # Call API
+                        response = requests.post(
+                            f"{API_URL}/api/test-script-generation",
+                            json=request_data,
+                        )
+                        
+                        if response.status_code == 200:
+                            response_data = response.json()
+                            test_scripts = response_data["test_scripts"]
+                            
+                            # Store test scripts in session state
+                            st.session_state.test_scripts = test_scripts
+                            
+                            # Display test scripts
+                            st.success(f"Generated {len(test_scripts)} test scripts!")
+                            
+                            for filename, content in test_scripts.items():
+                                with st.expander(f"Script: {filename}"):
+                                    st.code(content, language=language.lower())
+                                    
+                                    # Download button for individual script
+                                    st.download_button(
+                                        label=f"Download {filename}",
+                                        data=content,
+                                        file_name=filename,
+                                        mime="text/plain",
+                                    )
+                            
+                            # Create a zip file with all scripts
+                            with tempfile.TemporaryDirectory() as temp_dir:
+                                # Write scripts to temp directory
+                                for filename, content in test_scripts.items():
+                                    with open(os.path.join(temp_dir, filename), "w") as f:
+                                        f.write(content)
+                                
+                                # Create zip file
+                                import shutil
+                                zip_path = os.path.join(temp_dir, "test_scripts.zip")
+                                shutil.make_archive(os.path.join(temp_dir, "test_scripts"), "zip", temp_dir)
+                                
+                                # Read zip file
+                                with open(zip_path, "rb") as f:
+                                    zip_data = f.read()
+                                
+                                # Download button for zip file
+                                st.download_button(
+                                    label="Download All Scripts (ZIP)",
+                                    data=zip_data,
+                                    file_name="test_scripts.zip",
+                                    mime="application/zip",
+                                )
+                        else:
+                            st.error(f"Error: {response.status_code} - {response.text}")
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+    
+    # Test Data Generation Tab
+    with tabs[2]:
+        st.header("Test Data Generation")
+        st.write("Generate test data for your test cases")
+        
+        # Check if test cases are available
+        if not st.session_state.test_cases:
+            st.info("No test cases available. Please generate test cases first.")
+        else:
+            # Data format selection
+            data_format = st.selectbox(
+                "Data Format",
+                options=["JSON", "CSV", "SQL"],
+                index=0,
+            )
+            
+            # Data size
+            data_size = st.number_input(
+                "Number of Data Records",
+                min_value=1,
+                max_value=100,
+                value=10,
+                step=1,
+            )
+            
+            # Generate button
+            if st.button("Generate Test Data", key="generate_test_data_1"):
+                with st.spinner("Generating test data..."):
+                    try:
+                        # Prepare request
+                        request_data = {
+                            "test_cases": st.session_state.test_cases,
+                            "llm_config": {
+                                "provider": llm_provider,
+                                "model": llm_model,
+                                "api_key": llm_api_key,
+                                "temperature": float(llm_temperature),
+                                "max_tokens": int(llm_max_tokens),
+                            },
+                            "agent_config": {
+                                "format": data_format.lower(),
+                                "size": data_size
+                            }
+                        }
+                        
+                        # Call API
+                        response = requests.post(
+                            f"{API_URL}/api/test-data-generation",
+                            json=request_data,
+                        )
+                        
+                        if response.status_code == 200:
+                            response_data = response.json()
+                            test_data = response_data["test_data"]
+                            
+                            # Display test data
+                            st.success(f"Generated test data!")
+                            
+                            for dataset_name, dataset in test_data.items():
+                                with st.expander(f"Dataset: {dataset_name}"):
+                                    if data_format == "JSON":
+                                        st.json(dataset)
+                                    elif data_format == "CSV":
+                                        st.code(dataset, language="text")
+                                    elif data_format == "SQL":
+                                        st.code(dataset, language="sql")
+                                    
+                                    # Download button
+                                    file_extension = data_format.lower()
+                                    if isinstance(dataset, (dict, list)):
+                                        dataset = json.dumps(dataset, indent=2)
+                                    
+                                    st.download_button(
+                                        label=f"Download {dataset_name}",
+                                        data=dataset,
+                                        file_name=f"{dataset_name}.{file_extension}",
+                                        mime=f"application/{file_extension}",
+                                    )
+                        else:
+                            st.error(f"Error: {response.status_code} - {response.text}")
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+    
+    # Agent Chat Tab
+    with tabs[3]:
+        st.header("Agent Chat")
+        st.write("Have a conversation with the testing agents to get help with your testing needs.")
+        
+        # Initialize chat session state
+        if "agent_chat_messages" not in st.session_state:
+            st.session_state.agent_chat_messages = []
+        
+        if "agent_chat_session_id" not in st.session_state:
+            st.session_state.agent_chat_session_id = str(uuid.uuid4())
+        
+        # Agent selection
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            agent_type = st.selectbox(
+                "Select Agent to Chat With",
+                options=["Test Case Generation Agent", "Test Script Generation Agent", "Test Data Generation Agent"],
+                index=0,
+                key="agent_chat_agent_type"
+            )
+        
+        with col2:
+            if st.button("Clear Agent Chat History", key="clear_agent_chat"):
+                st.session_state.agent_chat_messages = []
+                st.rerun()
+        
+        # Display chat history
+        for message in st.session_state.agent_chat_messages:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
+        
+        # Chat input
+        agent_user_input = st.chat_input("Type your message here...", key="agent_chat_input")
+        
+        if agent_user_input:
+            # Add user message to chat history
+            st.session_state.agent_chat_messages.append({"role": "user", "content": agent_user_input})
+            
+            # Display user message
+            with st.chat_message("user"):
+                st.write(agent_user_input)
+            
+            # Get response from agent
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    try:
+                        # Generate a response based on the agent type
+                        if agent_type == "Test Case Generation Agent":
+                            # Simple test case generator
+                            def generate_test_cases(requirements):
+                                # Extract keywords
+                                words = requirements.lower().split()
+                                keywords = []
+                                for word in words:
+                                    if len(word) > 3 and word not in ["test", "case", "generate", "create", "please", "would", "could", "should"]:
+                                        keywords.append(word)
+                                
+                                # Create base test case
+                                test_cases = [
+                                    {
+                                        "title": f"Test {requirements[:40]}{'...' if len(requirements) > 40 else ''}",
+                                        "description": requirements,
+                                        "preconditions": [
+                                            "System is available and accessible",
+                                            "User has necessary permissions",
+                                            "Test data is prepared"
+                                        ],
+                                        "actions": [
+                                            "1. Set up the test environment",
+                                            "2. Prepare test data",
+                                            "3. Execute the test",
+                                            "4. Verify results"
+                                        ],
+                                        "expected_results": [
+                                            "The system behaves as expected",
+                                            "All requirements are satisfied",
+                                            "No errors are encountered"
+                                        ]
+                                    }
+                                ]
+                                
+                                # Add keyword-specific test cases
+                                for keyword in keywords[:3]:  # Limit to 3 additional test cases
+                                    test_cases.append({
+                                        "title": f"Test {keyword.capitalize()} Functionality",
+                                        "description": f"Verify {keyword} functionality works correctly",
+                                        "preconditions": [
+                                            "System is available",
+                                            f"User has access to {keyword} functionality"
+                                        ],
+                                        "actions": [
+                                            f"1. Navigate to {keyword} feature",
+                                            f"2. Perform actions related to {keyword}",
+                                            f"3. Validate the results"
+                                        ],
+                                        "expected_results": [
+                                            f"The {keyword} functionality works correctly",
+                                            "No errors are encountered"
+                                        ]
+                                    })
+                                
+                                return test_cases
+                            
+                            # Generate test cases
+                            test_cases = generate_test_cases(agent_user_input)
+                            
+                            # Create response
+                            assistant_response = f"I've generated {len(test_cases)} test cases based on your requirements. Here's a summary:\n\n"
+                            
+                            # Add summary
+                            for i, tc in enumerate(test_cases[:3], 1):
+                                assistant_response += f"{i}. {tc['title']}\n"
+                            
+                            if len(test_cases) > 3:
+                                assistant_response += f"... and {len(test_cases) - 3} more test cases.\n"
+                            
+                            # Display response
+                            st.write(assistant_response)
+                            
+                            # Display test cases
+                            with st.expander("View Generated Test Cases"):
+                                for i, tc in enumerate(test_cases, 1):
+                                    with st.expander(f"Test Case {i}: {tc.get('title', 'Untitled')}"):
+                                        if tc.get('description'):
+                                            st.write(f"**Description:** {tc['description']}")
+                                        
+                                        if tc.get('preconditions'):
+                                            st.write("**Preconditions:**")
+                                            for precond in tc['preconditions']:
+                                                st.write(f"• {precond}")
+                                        
+                                        if tc.get('actions'):
+                                            st.write("**Actions:**")
+                                            for action in tc['actions']:
+                                                st.write(f"• {action}")
+                                        
+                                        if tc.get('expected_results'):
+                                            st.write("**Expected Results:**")
+                                            for result in tc['expected_results']:
+                                                st.write(f"• {result}")
+                                
+                                # Download button
+                                json_str = json.dumps(test_cases, indent=2)
+                                st.download_button(
+                                    label="Download Test Cases (JSON)",
+                                    data=json_str,
+                                    file_name="test_cases.json",
+                                    mime="application/json",
+                                )
+                            
+                            # Add to chat history
+                            st.session_state.agent_chat_messages.append({
+                                "role": "assistant",
+                                "content": assistant_response
+                            })
+                        elif agent_type == "Test Script Generation Agent":
+                            # Simple response for test script generation
+                            assistant_response = f"I'll help you generate test scripts based on your requirements: '{agent_user_input}'. What programming language would you prefer for the test scripts?"
+                            st.write(assistant_response)
+                            st.session_state.agent_chat_messages.append({
+                                "role": "assistant",
+                                "content": assistant_response
+                            })
+                        elif agent_type == "Test Data Generation Agent":
+                            # Simple response for test data generation
+                            assistant_response = f"I can help you generate test data for: '{agent_user_input}'. What kind of test data structure do you need?"
+                            st.write(assistant_response)
+                            st.session_state.agent_chat_messages.append({
+                                "role": "assistant",
+                                "content": assistant_response
+                            })
+                    except Exception as e:
+                        error_message = f"Error: {str(e)}"
+                        st.error(error_message)
+                        st.session_state.agent_chat_messages.append({
+                            "role": "assistant",
+                            "content": f"I encountered an error: {error_message}"
+                        })
+    
+    # Chat Bot Tab
+    with tabs[4]:
+        st.header("Chat Bot")
+        st.write("Have a conversation with our simple AI assistant")
+        
+        # Initialize chat history if not already present
+        if "chat_history" not in st.session_state:
+            st.session_state.chat_history = []
+        
+        # Chat input area
+        user_message = st.text_area(
+            "Enter your message",
+            height=100,
+            placeholder="Type your message here and click 'Send' to chat with the AI..."
+        )
+        
+        # Send button and chat options in columns
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            send_button = st.button("Send Message")
+        with col2:
+            if st.button("Clear Chat History"):
+                st.session_state.chat_history = []
+                st.rerun()
+        
+        # Chat configuration
+        with st.expander("Chat Bot Configuration"):
+            chat_model = st.selectbox(
+                "Chat Model",
+                options=["Basic", "Advanced"],
+                index=0,
+            )
+            
+            # System prompt for the chat
+            system_prompt = st.text_area(
+                "System Prompt",
+                value="You are a helpful assistant who provides clear and concise responses.",
+                height=100,
+            )
+        
+        # Process message when Send button is clicked
+        if send_button and user_message:
+            # Add user message to chat history
+            st.session_state.chat_history.append({"role": "user", "content": user_message})
+            
+            with st.spinner("Thinking..."):
+                try:
+                    # Prepare request data
+                    request_data = {
+                        "message": user_message,
+                        "history": st.session_state.chat_history[:-1],  # Exclude current message
+                        "llm_config": {
+                            "provider": llm_provider,
+                            "model": llm_model,
+                            "api_key": llm_api_key,
+                            "temperature": float(llm_temperature),
+                            "max_tokens": int(llm_max_tokens),
+                        },
+                        "system_prompt": system_prompt,
+                        "chat_model": chat_model
+                    }
+                    
+                    # Try to call API
+                    try:
+                        response = requests.post(
+                            f"{API_URL}/api/chat-bot",
+                            json=request_data,
+                            timeout=10  # Add timeout to prevent hanging
+                        )
+                        
+                        if response.status_code == 200:
+                            response_data = response.json()
+                            bot_response = response_data.get("response", "I don't have a response for that.")
+                        else:
+                            # Fall back to simple responses
+                            raise Exception(f"API Error: {response.status_code}")
+                            
+                    except Exception as api_error:
+                        # Generate simple response if API fails
+                        st.warning("Using simple responses as API is unavailable.")
+                        
+                        # Simple keyword-based responses
+                        if "hello" in user_message.lower() or "hi" in user_message.lower():
+                            bot_response = "Hello! How can I help you today?"
+                        elif "thank" in user_message.lower():
+                            bot_response = "You're welcome! I'm happy to help."
+                        elif "bye" in user_message.lower() or "goodbye" in user_message.lower():
+                            bot_response = "Goodbye! Feel free to chat again when you need assistance."
+                        elif "?" in user_message:
+                            bot_response = f"That's an interesting question. I'll do my best to answer: {user_message}"
+                        else:
+                            bot_response = f"I understand you're saying: '{user_message}'. How can I assist you further?"
+                    
+                    # Add bot response to chat history
+                    st.session_state.chat_history.append({"role": "assistant", "content": bot_response})
+                    
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
+        
+        # Display chat history
+        st.subheader("Chat History")
+        for msg in st.session_state.chat_history:
+            if msg["role"] == "user":
+                st.markdown(f"**You:** {msg['content']}")
+            else:
+                st.markdown(f"**Bot:** {msg['content']}")
+            st.divider()
+
+
+def load_prompt_template(template_name: str) -> Optional[str]:
+    """Load a prompt template from the API."""
+    try:
+        response = requests.get(f"{API_URL}/api/prompt-templates?name={template_name}")
+        
+        if response.status_code == 200:
+            templates = response.json().get("templates", [])
+            for template in templates:
+                if template.get("name") == template_name:
+                    return template.get("content", "")
+        
+        return None
+    except Exception as e:
+        st.error(f"Error loading prompt template: {str(e)}")
+        return None
+
+
+def save_prompt_template(template_name: str, content: str) -> bool:
+    """Save a prompt template via the API."""
+    try:
+        request_data = {
+            "name": template_name,
+            "content": content
+        }
+        
+        response = requests.post(f"{API_URL}/api/prompt-templates", json=request_data)
+        
+        return response.status_code == 200
+    except Exception as e:
+        st.error(f"Error saving prompt template: {str(e)}")
+        return False
+
+
+if __name__ == "__main__":
+    main()

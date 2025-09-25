@@ -1,0 +1,150 @@
+/* Custom styles for the Streamlit UI */
+
+/* Main container */
+.main .block-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+/* Headers */
+h1 {
+    color: #0066b2;
+}
+
+h2 {
+    color: #0066b2;
+    margin-top: 1.5rem;
+}
+
+h3 {
+    color: #0066b2;
+    margin-top: 1rem;
+}
+
+/* Code blocks */
+pre {
+    background-color: #f0f2f6;
+    padding: 10px;
+    border-radius: 5px;
+    overflow: auto;
+    max-height: 400px;
+}
+
+/* Buttons */
+.stButton > button {
+    background-color: #0066b2;
+    color: white;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+}
+
+.stButton > button:hover {
+    background-color: #004c8c;
+}
+
+/* Download button */
+.stDownloadButton > button {
+    background-color: #28a745;
+    color: white;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+}
+
+.stDownloadButton > button:hover {
+    background-color: #218838;
+}
+
+/* Expander */
+.streamlit-expanderHeader {
+    font-weight: 600;
+    color: #0066b2;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 2px;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: 50px;
+    white-space: pre-wrap;
+    background-color: #f0f2f6;
+    border-radius: 4px 4px 0 0;
+    gap: 1px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: #0066b2;
+    color: white;
+}
+
+/* Sidebar */
+.sidebar .sidebar-content {
+    background-color: #f8f9fa;
+}
+
+/* Text areas */
+.stTextArea textarea {
+    border-radius: 4px;
+    border-color: #ced4da;
+}
+
+/* Text inputs */
+.stTextInput input {
+    border-radius: 4px;
+    border-color: #ced4da;
+}
+
+/* Number inputs */
+.stNumberInput input {
+    border-radius: 4px;
+    border-color: #ced4da;
+}
+
+/* Select boxes */
+.stSelectbox select {
+    border-radius: 4px;
+    border-color: #ced4da;
+}
+
+/* File uploader */
+.stFileUploader {
+    border-radius: 4px;
+    border-color: #ced4da;
+}
+
+/* Success messages */
+.stSuccess {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+/* Error messages */
+.stError {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+/* Info messages */
+.stInfo {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+/* Warning messages */
+.stWarning {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 10px;
+    border-radius: 4px;
+}

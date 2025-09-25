@@ -1,0 +1,37 @@
+# Quality Engineering Agentic Framework Configuration
+
+# LLM Configuration
+llm:
+  provider: openai  # Options: openai, gemini
+  model: gpt-5-nano      # Model name depends on the provider
+  api_key: ""       # Your API key here
+  temperature: 0.2  # Lower for more deterministic outputs
+  max_tokens: 2000  # Maximum tokens for response
+
+# Agent Configuration
+agents:
+  test_case_generation:
+    prompt_template: "templates/test_case_generation_prompt.txt"
+    output_format: "gherkin"  # Options: gherkin, custom
+    
+  test_script_generator:
+    prompt_template: "templates/test_script_generator_prompt.txt"
+    framework: "pytest"  # Options: pytest, unittest
+    browser: "chrome"    # Options: chrome, firefox, edge
+    
+  test_data_generator:
+    prompt_template: "templates/test_data_generator_prompt.txt"
+    output_format: "json"  # Options: json, csv
+    data_variations: 5     # Number of data variations to generate
+    include_edge_cases: true
+
+# Logging Configuration
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: "logs/qeaf.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# System Configuration
+system:
+  cache_dir: ".cache"
+  timeout: 60  # Seconds
