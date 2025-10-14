@@ -35,3 +35,8 @@
 2025-06-02 23:06:19,377 - quality_engineering_agentic_framework.web.run_web - INFO - Starting Streamlit app on port 8501
 2025-06-02 23:06:22,048 - quality_engineering_agentic_framework.web.run_web - INFO - Web interface running at http://localhost:8501
 2025-06-02 23:07:03,074 - quality_engineering_agentic_framework.web.run_web - INFO - Stopping web interface
+2025-10-09 20:10:54,465 - quality_engineering_agentic_framework.web.run_web - INFO - Starting web interface
+2025-10-09 20:10:54,468 - quality_engineering_agentic_framework.web.run_web - INFO - Starting API server on port 8080
+2025-10-09 20:10:56,707 - quality_engineering_agentic_framework.web.run_web - INFO - Starting Streamlit app on port 8501
+2025-10-09 20:11:02,057 - quality_engineering_agentic_framework.web.run_web - INFO - Web interface running at http://localhost:8501
+2025-10-09 20:34:00,125 - quality_engineering_agentic_framework.web.run_web - INFO - Stopping web interface

@@ -63,7 +63,7 @@ class TestCaseGenerationAgent(AgentInterface):
         
         {requirement}
         
-        Generate only 5 unique, non-redundant test cases as possible, covering all combinations, edge cases, and scenarios, in {output_format} format.
+        Generate only 1 unique, non-redundant test cases as possible, covering all combinations, edge cases, and scenarios, in {output_format} format.
         
         Each test case should include:
         - A clear title/description
