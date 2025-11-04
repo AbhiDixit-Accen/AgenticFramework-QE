@@ -20,13 +20,16 @@ import random
 import string
 import pandas as pd
 from io import StringIO
+import streamlit as st
+
+api_url = st.secrets["API_URL"]
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configure the API URL
-API_URL = "http://127.0.0.1:8080"
+#API_URL = "http://127.0.0.1:8080"
 
 # Initialize session state
 if 'generate_data' not in st.session_state:
