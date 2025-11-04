@@ -22,7 +22,7 @@ import pandas as pd
 from io import StringIO
 import streamlit as st
 
-api_url = st.secrets["API_URL"]
+#api_url = st.secrets["API_URL"]
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 # Configure the API URL
 #API_URL = "http://127.0.0.1:8080"
+API_URL = "https://agenticframework-qe-4.onrender.com"
 
 # Initialize session state
 if 'generate_data' not in st.session_state:
@@ -73,7 +74,7 @@ async def generate_test_cases(requirements, llm_provider, llm_model, llm_api_key
                     "max_tokens": int(llm_max_tokens)
                 }
             }
-            api_url = f"{API_URL}/api/api-test-case-generation"
+            api_url = f"{api_url}/api/api-test-case-generation"
         else:
             # Requirement-based test case generation
             request_data = {
