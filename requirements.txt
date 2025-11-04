@@ -16,3 +16,5 @@ python-multipart>=0.0.6
 httpx>=0.28.1
 nest-asyncio
 openpyxl
+uvicorn[standard]
+
