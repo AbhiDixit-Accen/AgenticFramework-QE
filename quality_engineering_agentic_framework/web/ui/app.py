@@ -40,8 +40,6 @@ if 'generate_data' not in st.session_state:
     st.session_state.llm_temperature = 0.7
     st.session_state.llm_max_tokens = 1000
 
-# Removed handle_test_data_generation function as it's no longer needed
-
 async def generate_test_cases(requirements, llm_provider, llm_model, llm_api_key, llm_temperature, llm_max_tokens, mode="requirement"):
     """Generate test cases by calling the correct backend API based on mode."""
     print("\n=== Starting generate_test_cases ===")
@@ -606,242 +604,496 @@ def main():
                         file_name=f"test_cases_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                         mime="application/json"
                     )
-            
-            with col2:
-                # CSV download
-                import csv
-                import io
                 
-                def generate_csv_data(test_cases):
-                    output = io.StringIO()
-                    writer = csv.writer(output)
+                with col2:
+                    # CSV download
+                    import csv
+                    import io
                     
-                    # Write header
-                    writer.writerow(["ID", "Title", "Description", "Preconditions", "Actions", "Expected Results"])
-                    
-                    # Write test cases
-                    for i, tc in enumerate(test_cases, 1):
-                        if not isinstance(tc, dict):
-                            continue
-                            
-                        # Helper function to safely get list values
-                        def safe_get_list(data, key):
-                            val = data.get(key, [])
-                            if isinstance(val, str):
-                                return [val]
-                            return val if isinstance(val, list) else []
+                    def generate_csv_data(test_cases):
+                        output = io.StringIO()
+                        writer = csv.writer(output)
                         
-                        writer.writerow([
-                            i,
-                            tc.get('title', ''),
-                            tc.get('description', ''),
-                            '; '.join(safe_get_list(tc, 'preconditions')),
-                            '; '.join(safe_get_list(tc, 'actions')),
-                            '; '.join(safe_get_list(tc, 'expected_results'))
-                        ])
+                        # Write header
+                        writer.writerow(["ID", "Title", "Description", "Preconditions", "Actions", "Expected Results"])
+                        
+                        # Write test cases
+                        for i, tc in enumerate(test_cases, 1):
+                            if not isinstance(tc, dict):
+                                continue
+                                
+                            # Helper function to safely get list values
+                            def safe_get_list(data, key):
+                                val = data.get(key, [])
+                                if isinstance(val, str):
+                                    return [val]
+                                return val if isinstance(val, list) else []
+                            
+                            writer.writerow([
+                                i,
+                                tc.get('title', ''),
+                                tc.get('description', ''),
+                                '; '.join(safe_get_list(tc, 'preconditions')),
+                                '; '.join(safe_get_list(tc, 'actions')),
+                                '; '.join(safe_get_list(tc, 'expected_results'))
+                            ])
+                        
+                        return output.getvalue()
                     
-                    return output.getvalue()
-                
-                try:
-                    if test_cases and isinstance(test_cases, list):
-                        csv_data = generate_csv_data(test_cases)
-                        st.download_button(
-                            label="Download as CSV",
-                            data=csv_data,
-                            file_name=f"test_cases_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                            mime="text/csv"
-                        )
-                except Exception as e:
-                    st.error(f"Error generating CSV: {str(e)}")
+                    try:
+                        if test_cases and isinstance(test_cases, list):
+                            csv_data = generate_csv_data(test_cases)
+                            st.download_button(
+                                label="Download as CSV",
+                                data=csv_data,
+                                file_name=f"test_cases_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                mime="text/csv"
+                            )
+                    except Exception as e:
+                        st.error(f"Error generating CSV: {str(e)}")
     
     # Test Script Generation Tab
     with tabs[TAB_TEST_SCRIPT_GEN]:
         st.header("Test Script Generation")
         st.write("Convert test cases into executable test scripts")
         
-        # Check if test cases are available
-        if not st.session_state.test_cases:
-            st.info("No test cases available. Please generate test cases first.")
-        else:
-            # Display available test cases
-            st.subheader("Available Test Cases")
-            for i, tc in enumerate(st.session_state.test_cases, 1):
-                st.write(f"{i}. {tc.get('title', 'Untitled Test Case')}")
+        # Create sub-tabs for Integrated and Standalone solutions
+        sub_tab1, sub_tab2 = st.tabs(["🔗 Integrated Solution", "📁 Standalone Solution"])
+        
+        # Integrated Solution Sub-tab
+        with sub_tab1:
+            st.subheader("Integrated Solution")
+            st.info("Generate test scripts from test cases created in the Test Case Generation tab")
             
-            # Test script configuration
-            st.subheader("Test Script Configuration")
-            
-            # Language selection
-            language = st.selectbox(
-                "Programming Language",
-                options=["Python", "JavaScript", "Java", "C#"],
-                index=0,
-            )
-            
-            # Framework selection
-            framework_options = {
-                "Python": ["pytest", "unittest", "robot"],
-                "JavaScript": ["jest", "mocha", "cypress"],
-                "Java": ["JUnit", "TestNG", "Cucumber"],
-                "C#": ["NUnit", "xUnit", "MSTest"],
-            }
-            
-            framework = st.selectbox(
-                "Test Framework",
-                options=framework_options[language],
-                index=0,
-            )
-            
-            # Generate button
-            if st.button("Generate Test Scripts", key="generate_test_scripts_1"):
-                with st.spinner("Generating test scripts..."):
-                    # Prepare request with properly formatted test cases
-                    formatted_test_cases = []
-                    for tc in st.session_state.test_cases:
-                        formatted_tc = {
-                            "title": tc.get("title", "Untitled Test Case"),
-                            "description": tc.get("description", ""),
-                            "preconditions": tc.get("preconditions", []),
-                            "actions": tc.get("actions", []),
-                            "expected_results": tc.get("expected_results", []),
-                            "test_data": {}
+            # Check if we have test cases from generation
+            if 'test_cases' not in st.session_state or not st.session_state.test_cases:
+                st.warning("⚠️ No test cases available. Please generate test cases first in the 'Test Case Generation' tab.")
+            else:
+                # Display available test cases
+                st.subheader("Available Test Cases")
+                
+                # Show test cases
+                for i, tc in enumerate(st.session_state.test_cases, 1):
+                    if isinstance(tc, dict):
+                        # If it's a dictionary, try to get the title
+                        title = tc.get('title', f"Test Case {i}")
+                        st.write(f"{i}. {title}")
+                    else:
+                        # If it's a simple value, just show it
+                        st.write(f"{i}. {str(tc)}")
+                
+                st.markdown("---")
+                
+                # Show test script configuration
+                st.subheader("Test Script Configuration")
+                
+                # Language selection
+                language = st.selectbox(
+                    "Programming Language",
+                    options=["Python", "JavaScript", "Java", "C#"],
+                    index=0,
+                    key="integrated_language"
+                )
+                
+                # Framework selection
+                framework_options = {
+                    "Python": ["pytest", "unittest", "robot"],
+                    "JavaScript": ["jest", "mocha", "cypress"],
+                    "Java": ["JUnit", "TestNG", "Cucumber"],
+                    "C#": ["NUnit", "xUnit", "MSTest"],
+                }
+                
+                framework = st.selectbox(
+                    "Test Framework",
+                    options=framework_options[language],
+                    index=0,
+                    key="integrated_framework"
+                )
+                
+                # Generate button
+                if st.button("Generate Test Scripts", key="generate_integrated_scripts"):
+                    with st.spinner("Generating test scripts..."):
+                        # Prepare request with properly formatted test cases
+                        formatted_test_cases = []
+                        for tc in st.session_state.test_cases:
+                            formatted_tc = {
+                                "title": tc.get("title", "Untitled Test Case"),
+                                "description": tc.get("description", ""),
+                                "preconditions": tc.get("preconditions", []),
+                                "actions": tc.get("actions", []),
+                                "expected_results": tc.get("expected_results", []),
+                                "test_data": {}
+                            }
+                            formatted_test_cases.append(formatted_tc)
+                        
+                        # Ensure consistent case for language and framework
+                        language_lower = language.lower()
+                        framework_lower = framework.lower()
+                        
+                        # Map UI framework names to backend expected values if needed
+                        framework_mapping = {
+                            'java': {
+                                'junit': 'junit',
+                                'testng': 'testng',
+                                'cucumber': 'cucumber'
+                            },
+                            'javascript': {
+                                'jest': 'jest',
+                                'mocha': 'mocha',
+                                'cypress': 'cypress'
+                            },
+                            'c#': {
+                                'nunit': 'nunit',
+                                'xunit': 'xunit',
+                                'mstest': 'mstest'
+                            },
+                            'python': {
+                                'pytest': 'pytest',
+                                'unittest': 'unittest',
+                                'robot': 'robot'
+                            }
                         }
-                        formatted_test_cases.append(formatted_tc)
-                    
-                    # Ensure consistent case for language and framework
-                    language_lower = language.lower()
-                    framework_lower = framework.lower()
-                    
-                    # Map UI framework names to backend expected values if needed
-                    framework_mapping = {
-                        'java': {
-                            'junit': 'junit',
-                            'testng': 'testng',
-                            'cucumber': 'cucumber'
-                        },
-                        'javascript': {
-                            'jest': 'jest',
-                            'mocha': 'mocha',
-                            'cypress': 'cypress'
-                        },
-                        'c#': {
-                            'nunit': 'nunit',
-                            'xunit': 'xunit',
-                            'mstest': 'mstest'
-                        },
-                        'python': {
-                            'pytest': 'pytest',
-                            'unittest': 'unittest',
-                            'robot': 'robot'
+                        
+                        # Get the mapped framework or use the original if not found
+                        mapped_framework = framework_mapping.get(language_lower, {}).get(framework_lower, framework_lower)
+                        
+                        request_data = {
+                            "test_cases": formatted_test_cases,
+                            "llm_config": {
+                                "provider": llm_provider,
+                                "model": llm_model,
+                                "api_key": llm_api_key,
+                                "temperature": float(llm_temperature),
+                                "max_tokens": int(llm_max_tokens),
+                            },
+                            "agent_config": {
+                                "language": language_lower,
+                                "framework": mapped_framework,
+                                "browser": "chrome"
+                            }
                         }
-                    }
-                    
-                    # Get the mapped framework or use the original if not found
-                    mapped_framework = framework_mapping.get(language_lower, {}).get(framework_lower, framework_lower)
-                    
-                    request_data = {
-                        "test_cases": formatted_test_cases,
-                        "llm_config": {
-                            "provider": llm_provider,
-                            "model": llm_model,
-                            "api_key": llm_api_key,
-                            "temperature": float(llm_temperature),
-                            "max_tokens": int(llm_max_tokens),
-                        },
-                        "agent_config": {
-                            "language": language_lower,
-                            "framework": mapped_framework,
-                            "browser": "chrome"
-                        }
-                    }
-                    
-                    # Call API with better error handling
-                    try:
-                        response = requests.post(
-                            f"{API_URL}/api/test-script-generation",
-                            json=request_data,
-                            timeout=30  # 30 seconds timeout
-                        )
-                        response.raise_for_status()  # Will raise an HTTPError for bad responses
-                        response_data = response.json()
                         
-                        if "test_scripts" not in response_data:
-                            raise ValueError("Invalid response format: 'test_scripts' key not found")
-                            
-                        test_scripts = response_data["test_scripts"]
-                        
-                        # Store test scripts in session state
-                        st.session_state.test_scripts = test_scripts
-                        
-                        # Display success message
-                        st.success(f"Successfully generated {len(test_scripts)} test scripts!")
-                        
-                        # Display each test script in an expander
-                        for filename, content in test_scripts.items():
-                            with st.expander(f"📄 {filename}", expanded=True):
-                                # Determine language for syntax highlighting
-                                file_ext = filename.split('.')[-1].lower()
-                                lang_map = {
-                                    'py': 'python',
-                                    'java': 'java',
-                                    'js': 'javascript',
-                                    'cs': 'csharp',
-                                    'feature': 'gherkin',
-                                    'xml': 'xml',
-                                    'json': 'json',
-                                    'md': 'markdown',
-                                    'txt': 'text'
-                                }
-                                lang = lang_map.get(file_ext, 'text')
-                                st.code(content, language=lang)
-                                
-                                # Download button for individual script
-                                st.download_button(
-                                    label=f"⬇️ Download {filename}",
-                                    data=content,
-                                    file_name=filename,
-                                    mime="text/plain",
-                                    key=f"dl_{filename}"
-                                )
-                        
-                        # Create a zip file with all scripts
-                        with tempfile.TemporaryDirectory() as temp_dir:
-                            # Write scripts to temp directory
-                            for filename, content in test_scripts.items():
-                                file_path = os.path.join(temp_dir, filename)
-                                os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                                with open(file_path, "w", encoding="utf-8") as f:
-                                    f.write(content)
-                            
-                            # Create zip file
-                            import shutil
-                            zip_path = os.path.join(temp_dir, "test_scripts.zip")
-                            shutil.make_archive(os.path.join(temp_dir, "test_scripts"), "zip", temp_dir)
-                            
-                            # Read zip file
-                            with open(zip_path, "rb") as f:
-                                zip_data = f.read()
-                            
-                            # Download button for zip file
-                            st.download_button(
-                                label="📦 Download All Scripts (ZIP)",
-                                data=zip_data,
-                                file_name="test_scripts.zip",
-                                mime="application/zip",
-                                key="download_all_zip"
+                        # Call API with better error handling
+                        try:
+                            response = requests.post(
+                                f"{API_URL}/api/test-script-generation",
+                                json=request_data,
+                                timeout=30  # 30 seconds timeout
                             )
-                        
-                    except requests.exceptions.RequestException as e:
-                        st.error(f"❌ Failed to connect to the API: {str(e)}")
-                        st.stop()
-                    except ValueError as e:
-                        st.error(f"❌ Invalid response from server: {str(e)}")
-                        if 'response_data' in locals():
-                            st.json(response_data)  # Show the actual response for debugging
-                        st.stop()
-                    except Exception as e:
-                        st.error(f"❌ An unexpected error occurred: {str(e)}")
-                        st.stop()
+                            response.raise_for_status()  # Will raise an HTTPError for bad responses
+                            response_data = response.json()
+                            
+                            if "test_scripts" not in response_data:
+                                raise ValueError("Invalid response format: 'test_scripts' key not found")
+                                
+                            test_scripts = response_data["test_scripts"]
+                            
+                            # Store test scripts in session state
+                            st.session_state.test_scripts = test_scripts
+                            
+                            # Display success message
+                            st.success(f"Successfully generated {len(test_scripts)} test scripts!")
+                            
+                            # Display each test script in an expander
+                            for filename, content in test_scripts.items():
+                                with st.expander(f"📄 {filename}", expanded=True):
+                                    # Determine language for syntax highlighting
+                                    file_ext = filename.split('.')[-1].lower()
+                                    lang_map = {
+                                        'py': 'python',
+                                        'java': 'java',
+                                        'js': 'javascript',
+                                        'cs': 'csharp',
+                                        'feature': 'gherkin',
+                                        'xml': 'xml',
+                                        'json': 'json',
+                                        'md': 'markdown',
+                                        'txt': 'text'
+                                    }
+                                    lang = lang_map.get(file_ext, 'text')
+                                    st.code(content, language=lang)
+                                    
+                                    # Download button for individual script
+                                    st.download_button(
+                                        label=f"⬇️ Download {filename}",
+                                        data=content,
+                                        file_name=filename,
+                                        mime="text/plain",
+                                        key=f"dl_integrated_{filename}"
+                                    )
+                            
+                            # Create a zip file with all scripts
+                            with tempfile.TemporaryDirectory() as temp_dir:
+                                # Write scripts to temp directory
+                                for filename, content in test_scripts.items():
+                                    file_path = os.path.join(temp_dir, filename)
+                                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                                    with open(file_path, "w", encoding="utf-8") as f:
+                                        f.write(content)
+                                
+                                # Create zip file
+                                import shutil
+                                zip_path = os.path.join(temp_dir, "test_scripts.zip")
+                                shutil.make_archive(os.path.join(temp_dir, "test_scripts"), "zip", temp_dir)
+                                
+                                # Read zip file
+                                with open(zip_path, "rb") as f:
+                                    zip_data = f.read()
+                                
+                                # Download button for zip file
+                                st.download_button(
+                                    label="📦 Download All Scripts (ZIP)",
+                                    data=zip_data,
+                                    file_name="test_scripts.zip",
+                                    mime="application/zip",
+                                    key="download_integrated_zip"
+                                )
+                            
+                        except requests.exceptions.RequestException as e:
+                            st.error(f"❌ Failed to connect to the API: {str(e)}")
+                        except ValueError as e:
+                            st.error(f"❌ Invalid response from server: {str(e)}")
+                            if 'response_data' in locals():
+                                st.json(response_data)  # Show the actual response for debugging
+                        except Exception as e:
+                            st.error(f"❌ An unexpected error occurred: {str(e)}")
+        
+        # Standalone Solution Sub-tab
+        with sub_tab2:
+            st.subheader("Standalone Solution")
+            st.info("Upload an Excel file containing your test cases to generate test scripts")
+            
+            # Upload File section
+            st.subheader("Upload File")
+            st.write("Upload your test script files here")
+            uploaded_file = st.file_uploader("Browse Excel file", type=[".xlsx", ".xls"], key="standalone_excel_uploader")
+            
+            # Check if file is uploaded
+            if uploaded_file is not None:
+                try:
+                    # Create uploadedTestCases directory if it doesn't exist
+                    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                    upload_dir = os.path.join(base_dir, 'uploadedTestCases')
+                    os.makedirs(upload_dir, exist_ok=True)
+                    
+                    # Save the uploaded file
+                    file_path = os.path.join(upload_dir, uploaded_file.name)
+                    with open(file_path, 'wb') as f:
+                        f.write(uploaded_file.getbuffer())
+                    
+                    # Verify file was saved
+                    if not os.path.exists(file_path):
+                        st.error(f"Failed to save file to: {file_path}")
+                    else:
+                        st.success(f"✅ File successfully uploaded: {uploaded_file.name}")
+                    
+                    # Read the Excel file
+                    df = pd.read_excel(file_path)
+                    
+                    # Display the uploaded test cases
+                    st.subheader("Uploaded Test Cases")
+                    # FIX 1: Hide index by using hide_index parameter (Streamlit 1.25+)
+                    # FIX 2: Show all data with proper height calculation
+                    try:
+                        # Try using hide_index parameter (Streamlit >= 1.25.0)
+                        st.dataframe(
+                            df, 
+                            use_container_width=True,
+                            hide_index=True,  # This removes the 0, 1, 2... index column
+                            height=min(600, max(200, (len(df) + 1) * 35 + 38))  # Dynamic height with header
+                        )
+                    except TypeError:
+                        # Fallback for older Streamlit versions - display without index using column selector
+                        st.dataframe(
+                            df,
+                            use_container_width=True,
+                            height=min(600, max(200, (len(df) + 1) * 35 + 38))
+                        )
+                        st.info("Note: Using older Streamlit version. Upgrade to Streamlit 1.25+ to hide the index column.")
+                    
+                    # Store the test cases in a temporary session variable for standalone
+                    st.session_state.standalone_test_cases = df.to_dict('records')
+                    
+                    st.markdown("---")
+                    
+                    # Show test script configuration
+                    st.subheader("Test Script Configuration")
+                    
+                    # Language selection
+                    language_standalone = st.selectbox(
+                        "Programming Language",
+                        options=["Python", "JavaScript", "Java", "C#"],
+                        index=0,
+                        key="standalone_language"
+                    )
+                    
+                    # Framework selection
+                    framework_options_standalone = {
+                        "Python": ["pytest", "unittest", "robot"],
+                        "JavaScript": ["jest", "mocha", "cypress"],
+                        "Java": ["JUnit", "TestNG", "Cucumber"],
+                        "C#": ["NUnit", "xUnit", "MSTest"],
+                    }
+                    
+                    framework_standalone = st.selectbox(
+                        "Test Framework",
+                        options=framework_options_standalone[language_standalone],
+                        index=0,
+                        key="standalone_framework"
+                    )
+                    
+                    # Generate button
+                    if st.button("Generate Test Scripts", key="generate_standalone_scripts"):
+                        with st.spinner("Generating test scripts..."):
+                            # Prepare request with properly formatted test cases
+                            formatted_test_cases = []
+                            for tc in st.session_state.standalone_test_cases:
+                                formatted_tc = {
+                                    "title": tc.get("title", tc.get(list(tc.keys())[0]) if tc else "Untitled Test Case"),
+                                    "description": tc.get("description", ""),
+                                    "preconditions": tc.get("preconditions", []),
+                                    "actions": tc.get("actions", []),
+                                    "expected_results": tc.get("expected_results", []),
+                                    "test_data": {}
+                                }
+                                formatted_test_cases.append(formatted_tc)
+                            
+                            # Ensure consistent case for language and framework
+                            language_lower = language_standalone.lower()
+                            framework_lower = framework_standalone.lower()
+                            
+                            # Map UI framework names to backend expected values if needed
+                            framework_mapping = {
+                                'java': {
+                                    'junit': 'junit',
+                                    'testng': 'testng',
+                                    'cucumber': 'cucumber'
+                                },
+                                'javascript': {
+                                    'jest': 'jest',
+                                    'mocha': 'mocha',
+                                    'cypress': 'cypress'
+                                },
+                                'c#': {
+                                    'nunit': 'nunit',
+                                    'xunit': 'xunit',
+                                    'mstest': 'mstest'
+                                },
+                                'python': {
+                                    'pytest': 'pytest',
+                                    'unittest': 'unittest',
+                                    'robot': 'robot'
+                                }
+                            }
+                            
+                            # Get the mapped framework or use the original if not found
+                            mapped_framework = framework_mapping.get(language_lower, {}).get(framework_lower, framework_lower)
+                            
+                            request_data = {
+                                "test_cases": formatted_test_cases,
+                                "llm_config": {
+                                    "provider": llm_provider,
+                                    "model": llm_model,
+                                    "api_key": llm_api_key,
+                                    "temperature": float(llm_temperature),
+                                    "max_tokens": int(llm_max_tokens),
+                                },
+                                "agent_config": {
+                                    "language": language_lower,
+                                    "framework": mapped_framework,
+                                    "browser": "chrome"
+                                }
+                            }
+                            
+                            # Call API with better error handling
+                            try:
+                                response = requests.post(
+                                    f"{API_URL}/api/test-script-generation",
+                                    json=request_data,
+                                    timeout=30  # 30 seconds timeout
+                                )
+                                response.raise_for_status()  # Will raise an HTTPError for bad responses
+                                response_data = response.json()
+                                
+                                if "test_scripts" not in response_data:
+                                    raise ValueError("Invalid response format: 'test_scripts' key not found")
+                                    
+                                test_scripts = response_data["test_scripts"]
+                                
+                                # Store test scripts in session state
+                                st.session_state.standalone_test_scripts = test_scripts
+                                
+                                # Display success message
+                                st.success(f"Successfully generated {len(test_scripts)} test scripts!")
+                                
+                                # Display each test script in an expander
+                                for filename, content in test_scripts.items():
+                                    with st.expander(f"📄 {filename}", expanded=True):
+                                        # Determine language for syntax highlighting
+                                        file_ext = filename.split('.')[-1].lower()
+                                        lang_map = {
+                                            'py': 'python',
+                                            'java': 'java',
+                                            'js': 'javascript',
+                                            'cs': 'csharp',
+                                            'feature': 'gherkin',
+                                            'xml': 'xml',
+                                            'json': 'json',
+                                            'md': 'markdown',
+                                            'txt': 'text'
+                                        }
+                                        lang = lang_map.get(file_ext, 'text')
+                                        st.code(content, language=lang)
+                                        
+                                        # Download button for individual script
+                                        st.download_button(
+                                            label=f"⬇️ Download {filename}",
+                                            data=content,
+                                            file_name=filename,
+                                            mime="text/plain",
+                                            key=f"dl_standalone_{filename}"
+                                        )
+                                
+                                # Create a zip file with all scripts
+                                with tempfile.TemporaryDirectory() as temp_dir:
+                                    # Write scripts to temp directory
+                                    for filename, content in test_scripts.items():
+                                        file_path = os.path.join(temp_dir, filename)
+                                        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                                        with open(file_path, "w", encoding="utf-8") as f:
+                                            f.write(content)
+                                    
+                                    # Create zip file
+                                    import shutil
+                                    zip_path = os.path.join(temp_dir, "test_scripts.zip")
+                                    shutil.make_archive(os.path.join(temp_dir, "test_scripts"), "zip", temp_dir)
+                                    
+                                    # Read zip file
+                                    with open(zip_path, "rb") as f:
+                                        zip_data = f.read()
+                                    
+                                    # Download button for zip file
+                                    st.download_button(
+                                        label="📦 Download All Scripts (ZIP)",
+                                        data=zip_data,
+                                        file_name="test_scripts.zip",
+                                        mime="application/zip",
+                                        key="download_standalone_zip"
+                                    )
+                                
+                            except requests.exceptions.RequestException as e:
+                                st.error(f"❌ Failed to connect to the API: {str(e)}")
+                            except ValueError as e:
+                                st.error(f"❌ Invalid response from server: {str(e)}")
+                                if 'response_data' in locals():
+                                    st.json(response_data)  # Show the actual response for debugging
+                            except Exception as e:
+                                st.error(f"❌ An unexpected error occurred: {str(e)}")
+                    
+                except Exception as e:
+                    st.error(f"Error reading Excel file: {str(e)}")
+            else:
+                st.warning("⚠️ Please upload an Excel file to continue")
     
     # Test Data Generation Tab
     with tabs[TAB_TEST_DATA_GEN]:
@@ -946,104 +1198,19 @@ def main():
                 elif st.session_state.data_format == "SQL":
                     st.code(dataset, language="sql")
                     
-                    # Prepare download data
-                    file_extension = st.session_state.data_format.lower()
-                    download_data = json.dumps(dataset, indent=2) if isinstance(dataset, (dict, list)) else str(dataset)
-                    
-                    # Download button
-                    st.download_button(
-                        label=f"Download {dataset_name}",
-                        data=download_data,
-                        file_name=f"{dataset_name}.{file_extension}",
-                        mime=f"application/{file_extension}",
-                        key=f"download_{dataset_name}"
-                    )
+                # Prepare download data
+                file_extension = st.session_state.data_format.lower()
+                download_data = json.dumps(dataset, indent=2) if isinstance(dataset, (dict, list)) else str(dataset)
+                
+                # Download button
+                st.download_button(
+                    label=f"Download {dataset_name}",
+                    data=download_data,
+                    file_name=f"{dataset_name}.{file_extension}",
+                    mime=f"application/{file_extension}",
+                    key=f"download_{dataset_name}"
+                )
     
-    # API Test Case Generation Tab
-    with tabs[TAB_API_TEST_CASE_GEN]:
-        st.header("API Test Case Generation")
-        st.write("Generate test cases for your APIs by providing the details below.")
-
-        with st.form("api_test_case_form"):
-            base_url = st.text_input("API Base URL", help="e.g. https://api.example.com")
-            endpoint = st.text_input("Endpoint Path", help="e.g. /v1/resource")
-            method = st.selectbox("HTTP Method", ["GET", "POST", "PUT", "DELETE", "PATCH"])
-            headers = st.text_area("Headers (JSON)", value="{}", help='e.g. {"Authorization": "Bearer ..."}')
-            params = st.text_area("Query Parameters (JSON)", value="{}", help='e.g. {"page": 1}')
-            body = st.text_area("Request Body (JSON)", value="{}", help='For POST/PUT/PATCH, e.g. {"name": "foo"}')
-            auth = st.text_area("Authentication Info (JSON)", value="{}", help='e.g. {"type": "basic", "username": "...", "password": "..."}')
-
-            submitted = st.form_submit_button("Generate API Test Cases")
-
-        if submitted:
-            # Validate JSON fields
-            def safe_json_loads(s, field):
-                try:
-                    return json.loads(s) if s.strip() else {}
-                except Exception as e:
-                    st.error(f"Invalid JSON in {field}: {e}")
-                    return None
-
-            headers_json = safe_json_loads(headers, "Headers")
-            params_json = safe_json_loads(params, "Query Parameters")
-            body_json = safe_json_loads(body, "Request Body")
-            auth_json = safe_json_loads(auth, "Authentication Info")
-
-            if None in (headers_json, params_json, body_json, auth_json):
-                st.stop()
-
-            if not base_url.strip() or not endpoint.strip():
-                st.error("Base URL and Endpoint Path are required.")
-                st.stop()
-
-            api_details = {
-                "base_url": base_url.strip(),
-                "endpoint": endpoint.strip(),
-                "method": method,
-                "headers": headers_json,
-                "params": params_json,
-                "body": body_json,
-                "auth": auth_json,
-            }
-
-            # Validate LLM config fields
-            if not all([llm_provider, llm_model, llm_api_key, llm_temperature, llm_max_tokens]):
-                st.error("All LLM configuration fields are required.")
-                st.stop()
-
-            # Prepare request for backend
-            request_data = {
-                "api_details": api_details,
-                "llm_config": {
-                    "provider": llm_provider,
-                    "model": llm_model,
-                    "api_key": llm_api_key,
-                    "temperature": float(llm_temperature),
-                    "max_tokens": int(llm_max_tokens),
-                },
-            }
-
-
-            with st.spinner("Generating API test cases..."):
-                try:
-                    response = requests.post(
-                        f"{API_URL}/api/api-test-case-generation",
-                        json=request_data,
-                        timeout=30,
-                    )
-                    response.raise_for_status()
-                    data = response.json()
-                    test_cases = data.get("test_cases", [])
-                    if test_cases:
-                        st.success(f"Generated {len(test_cases)} API test cases!")
-                        for i, tc in enumerate(test_cases, 1):
-                            with st.expander(f"{i}. {tc.get('title', 'Untitled Test Case')}"):
-                                st.json(tc)
-                    else:
-                        st.warning("No test cases generated.")
-                except Exception as e:
-                    st.error(f"Error generating API test cases: {e}")
-
     # Chat Bot Tab
     with tabs[TAB_CHAT_BOT]:
         st.header("Chat Bot")
@@ -1130,6 +1297,90 @@ def main():
                         logger.error(error_msg)
                         st.error(error_msg)
                         st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
+    
+    # API Test Case Generation Tab
+    with tabs[TAB_API_TEST_CASE_GEN]:
+        st.header("API Test Case Generation")
+        st.write("Generate test cases for your APIs by providing the details below.")
+
+        with st.form("api_test_case_form"):
+            base_url = st.text_input("API Base URL", help="e.g. https://api.example.com")
+            endpoint = st.text_input("Endpoint Path", help="e.g. /v1/resource")
+            method = st.selectbox("HTTP Method", ["GET", "POST", "PUT", "DELETE", "PATCH"])
+            headers = st.text_area("Headers (JSON)", value="{}", help='e.g. {"Authorization": "Bearer ..."}')
+            params = st.text_area("Query Parameters (JSON)", value="{}", help='e.g. {"page": 1}')
+            body = st.text_area("Request Body (JSON)", value="{}", help='For POST/PUT/PATCH, e.g. {"name": "foo"}')
+            auth = st.text_area("Authentication Info (JSON)", value="{}", help='e.g. {"type": "basic", "username": "...", "password": "..."}')
+
+            submitted = st.form_submit_button("Generate API Test Cases")
+
+        if submitted:
+            # Validate JSON fields
+            def safe_json_loads(s, field):
+                try:
+                    return json.loads(s) if s.strip() else {}
+                except Exception as e:
+                    st.error(f"Invalid JSON in {field}: {e}")
+                    return None
+
+            headers_json = safe_json_loads(headers, "Headers")
+            params_json = safe_json_loads(params, "Query Parameters")
+            body_json = safe_json_loads(body, "Request Body")
+            auth_json = safe_json_loads(auth, "Authentication Info")
+
+            if None in (headers_json, params_json, body_json, auth_json):
+                st.stop()
+
+            if not base_url.strip() or not endpoint.strip():
+                st.error("Base URL and Endpoint Path are required.")
+                st.stop()
+
+            api_details = {
+                "base_url": base_url.strip(),
+                "endpoint": endpoint.strip(),
+                "method": method,
+                "headers": headers_json,
+                "params": params_json,
+                "body": body_json,
+                "auth": auth_json,
+            }
+
+            # Validate LLM config fields
+            if not all([llm_provider, llm_model, llm_api_key, llm_temperature, llm_max_tokens]):
+                st.error("All LLM configuration fields are required.")
+                st.stop()
+
+            # Prepare request for backend
+            request_data = {
+                "api_details": api_details,
+                "llm_config": {
+                    "provider": llm_provider,
+                    "model": llm_model,
+                    "api_key": llm_api_key,
+                    "temperature": float(llm_temperature),
+                    "max_tokens": int(llm_max_tokens),
+                },
+            }
+
+            with st.spinner("Generating API test cases..."):
+                try:
+                    response = requests.post(
+                        f"{API_URL}/api/api-test-case-generation",
+                        json=request_data,
+                        timeout=30,
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    test_cases = data.get("test_cases", [])
+                    if test_cases:
+                        st.success(f"Generated {len(test_cases)} API test cases!")
+                        for i, tc in enumerate(test_cases, 1):
+                            with st.expander(f"{i}. {tc.get('title', 'Untitled Test Case')}"):
+                                st.json(tc)
+                    else:
+                        st.warning("No test cases generated.")
+                except Exception as e:
+                    st.error(f"Error generating API test cases: {e}")
 
 def load_prompt_template(template_name: str) -> Optional[str]:
     """Load a prompt template from the API."""
