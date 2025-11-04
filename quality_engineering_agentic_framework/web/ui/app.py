@@ -206,8 +206,8 @@ st.set_page_config(
 )
 
 # Define API URL
-API_URL = "http://127.0.0.1:8080"  # Using 127.0.0.1 instead of localhost for consistency
-
+#API_URL = "http://127.0.0.1:8080"  # Using 127.0.0.1 instead of localhost for consistency
+API_URL = "https://agenticframework-qe-4.onrender.com"
 
 def generate_sample_data(data_format: str, size: int, fields: List[Dict[str, str]]) -> Union[dict, str]:
     """Generate sample test data in the specified format.
