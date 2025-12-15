@@ -14,7 +14,7 @@ QEAF consists of three main agents:
 
 - Configurable LLM Layer supporting OpenAI GPT-4, Google Gemini, and other LLMs
 - Domain-specific requirement pattern support
-- Selenium WebDriver test script generation
+- Any open source (ex Selenium WebDriver) test script generation
 - Synthetic test data generation with CSV and JSON export
 - Modular and extensible architecture
 - Configuration via YAML or JSON
@@ -32,14 +32,11 @@ pip install -e .
 ### Command Line Interface
 
 ```bash
-# Run the full pipeline
-qeaf run --requirements path/to/requirements.txt --output path/to/output
+# Run the backend services (Do the cd to the folder 'Test Case Generation')
+python -m quality_engineering_agentic_framework.web.api.endpoints 8080
 
-# Run specific agent
-qeaf run-agent --agent test-case-generation --input path/to/input.txt --output path/to/output
-
-# Run the web interface
-qeaf web
+# Run the web interface (from the folder 'Test Case Generation\quality_engineering_agentic_framework\web\ui')
+python -m streamlit run app.py
 ```
 
 ### Web Interface
