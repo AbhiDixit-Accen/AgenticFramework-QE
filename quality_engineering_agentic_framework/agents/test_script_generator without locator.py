@@ -61,6 +61,7 @@ class TestScriptGenerator(AgentInterface):
             except Exception as e:
                 logger.warning(f"Failed to load prompt template: {e}")
         
+        # Updated default template with page load & element waits
         return """
         You are a senior test automation engineer. Generate fully working Selenium automation scripts.
         Requirements:
@@ -94,29 +95,38 @@ class TestScriptGenerator(AgentInterface):
     ) -> Dict[str, str]:
         """
         Process structured test cases or a rendered DOM to generate Selenium scripts.
+        
+        Args:
+            test_cases: List of structured test cases
+            rendered_dom: Optional HTML string of the rendered page for locator extraction
+        
+        Returns:
+            Dictionary of filename -> script content
         """
         locator_info = {}
 
-        # Check if structured test cases provide any locators
-        locators_provided = False
-        for tc in test_cases:
-            for action in tc.get("actions", []):
-                if "locator" in action:
-                    locators_provided = True
-                    break
-            if locators_provided:
-                break
-
-        if not locators_provided and rendered_dom:
-            # Only parse DOM if no locators are provided
+        if rendered_dom:
+            # Parse rendered DOM
             soup = BeautifulSoup(rendered_dom, "html.parser")
             dom_tree = etree.HTML(str(soup))
+
             tags = ["input", "button", "a", "select", "textarea"]
             elements = soup.find_all(tags)
+
             for idx, el in enumerate(elements, 1):
                 el_id = el.get("id")
+                el_name = el.get("name")
                 el_class = el.get("class")
-                css_selector = f"#{el_id}" if el_id else ("." + ".".join(el_class) if el_class else el.name)
+
+                # Build CSS selector
+                if el_id:
+                    css_selector = f"#{el_id}"
+                elif el_class:
+                    css_selector = "." + ".".join(el_class)
+                else:
+                    css_selector = el.name
+
+                # Build XPath
                 try:
                     xpath = dom_tree.getpath(dom_tree.xpath(f"//*[@id='{el_id}']")[0]) if el_id else None
                 except Exception:
@@ -126,31 +136,22 @@ class TestScriptGenerator(AgentInterface):
                     "tag": el.name,
                     "text": el.get_text(strip=True),
                     "id": el_id,
+                    "name": el_name,
                     "class": el_class,
                     "css_selector": css_selector,
                     "xpath": xpath
                 }
 
-        # Convert test cases to string for LLM prompt
-        test_cases_str = ""
-        for i, tc in enumerate(test_cases):
-            test_cases_str += f"Test Case {i+1}: {tc.get('title', 'Untitled')}\n"
-            test_cases_str += f"Description: {tc.get('description', 'N/A')}\n"
-            test_cases_str += "Preconditions:\n" + "\n".join(f"- {p}" for p in tc.get("preconditions", [])) + "\n"
-            test_cases_str += "Actions:\n"
-            for a in tc.get("actions", []):
-                action_desc = f"- {a.get('action')}"
-                if 'locator' in a:
-                    locators = a['locator']
-                    locator_parts = [f"{k}: {v}" for k, v in locators.items()]
-                    action_desc += " | Locator: " + ", ".join(locator_parts)
-                else:
-                    if not locators_provided and rendered_dom:
-                        action_desc += " | Locator: (to be determined from DOM)"
-                if 'value' in a:
-                    action_desc += f" | Value: {a['value']}"
-                test_cases_str += action_desc + "\n"
-            test_cases_str += "Expected Results:\n" + "\n".join(f"- {r}" for r in tc.get("expected_results", [])) + "\n\n"
+            test_cases_str = json.dumps(locator_info, indent=2)
+        else:
+            # Convert structured test cases to string
+            test_cases_str = ""
+            for i, tc in enumerate(test_cases):
+                test_cases_str += f"Test Case {i+1}: {tc.get('title', 'Untitled')}\n"
+                test_cases_str += f"Description: {tc.get('description', 'N/A')}\n"
+                test_cases_str += "Preconditions:\n" + "\n".join(f"- {p}" for p in tc.get("preconditions", [])) + "\n"
+                test_cases_str += "Actions:\n" + "\n".join(f"- {a}" for a in tc.get("actions", [])) + "\n"
+                test_cases_str += "Expected Results:\n" + "\n".join(f"- {r}" for r in tc.get("expected_results", [])) + "\n\n"
 
         # Prepare prompt for LLM
         file_extensions = {"python": "py", "java": "java", "javascript": "js", "c#": "cs"}
