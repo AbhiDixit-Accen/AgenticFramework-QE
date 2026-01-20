@@ -27,7 +27,8 @@ logger = logging.getLogger(__name__)
 
 # Configure the API URL
 #API_URL = "http://127.0.0.1:8080"
-API_URL = "https://agenticframework-qe-4.onrender.com"
+#API_URL = "https://agenticframework-qe-4.onrender.com"
+API_URL = "http://16.171.147.102:8080"
 
 # Initialize session state
 if 'generate_data' not in st.session_state:
