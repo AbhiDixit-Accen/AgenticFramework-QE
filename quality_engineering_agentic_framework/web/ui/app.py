@@ -26,8 +26,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configure the API URL
-#API_URL = "http://127.0.0.1:8080"
-API_URL = "https://agenticframework-qe-4.onrender.com"
+# Configure the API URL
+API_URL = os.environ.get("API_URL", "http://127.0.0.1:8080")
+# API_URL = "https://agenticframework-qe-4.onrender.com"
 
 # Initialize session state
 if 'generate_data' not in st.session_state:
@@ -112,6 +113,9 @@ async def generate_test_cases(requirements, llm_provider, llm_model, llm_api_key
             # Handle response format
             if isinstance(response_data, dict) and "test_cases" in response_data:
                 result = response_data["test_cases"]
+                # Store product context if available
+                if "product_context" in response_data:
+                    st.session_state.product_context = response_data["product_context"]
             elif isinstance(response_data, list):
                 result = response_data
             elif isinstance(response_data, dict):
@@ -177,10 +181,11 @@ async def generate_test_cases(requirements, llm_provider, llm_model, llm_api_key
                         "test_data": {}
                     })
                 
-            print(f"\n=== Returning validated test cases ===")
-            print(f"Type: {type(validated_result)}")
-            print(f"Count: {len(validated_result)}")
-            return validated_result
+            print(f"\n=== Returning validated results ===")
+            return {
+                "test_cases": validated_result,
+                "product_context": response_data.get("product_context") if isinstance(response_data, dict) else None
+            }
             
         except json.JSONDecodeError as e:
             print(f"\n!!! Failed to parse JSON: {str(e)}")
@@ -203,8 +208,9 @@ st.set_page_config(
 )
 
 # Define API URL
-#API_URL = "http://127.0.0.1:8080"  # Using 127.0.0.1 instead of localhost for consistency
-API_URL = "https://agenticframework-qe-4.onrender.com"
+# Define API URL
+API_URL = os.environ.get("API_URL", "http://127.0.0.1:8080")
+# API_URL = "https://agenticframework-qe-4.onrender.com"
 
 def generate_sample_data(data_format: str, size: int, fields: List[Dict[str, str]]) -> Union[dict, str]:
     """Generate sample test data in the specified format.
@@ -342,6 +348,7 @@ def main():
     # Sidebar for configuration
     with st.sidebar:
         st.header("Configuration")
+        st.info(f"🔌 Connected to: `{API_URL}`")
         
         # LLM Configuration
         st.subheader("LLM Configuration")
@@ -449,7 +456,7 @@ def main():
                 with st.spinner("Generating comprehensive test cases... (this may take a moment)"):
                     try:
                         # Generate test cases using the API
-                        test_cases = asyncio.run(generate_test_cases(
+                        result = asyncio.run(generate_test_cases(
                             requirements=requirements_text,
                             llm_provider=llm_provider,
                             llm_model=llm_model,
@@ -458,15 +465,30 @@ def main():
                             llm_max_tokens=llm_max_tokens
                         ))
                         
+                        if isinstance(result, dict):
+                            test_cases = result.get("test_cases", [])
+                            product_context = result.get("product_context")
+                        else:
+                            test_cases = result
+                            product_context = None
+
                         if test_cases:  # Only update if we got results
                             # Store in session state
                             st.session_state.test_cases = test_cases
+                            if product_context:
+                                st.session_state.product_context = product_context
                             
                             # Show success message
                             st.success(f"✅ Generated {len(test_cases)} comprehensive test cases!")
                         
                     except Exception as e:
                         st.error(f"Error generating test cases: {str(e)}")
+        
+        # Display product context if available
+        if 'product_context' in st.session_state and st.session_state.product_context:
+            with st.expander("🔍 View Synthesized Product Knowledge (RAG Output)", expanded=False):
+                st.info("The information below was synthesized from your product documentation to provide context for test generation.")
+                st.markdown(st.session_state.product_context)
         
         # Display test cases if available
         if 'test_cases' in st.session_state and st.session_state.test_cases:
@@ -500,7 +522,8 @@ def main():
                         'preconditions': [],
                         'actions': [],
                         'expected_results': [],
-                        'test_data': {}
+                        'test_data': {},
+                        'rag_ref': ''
                     }
                     
                     # Safely copy values from the original test case
@@ -531,6 +554,10 @@ def main():
                             # Handle test data
                             if 'test_data' in tc and isinstance(tc['test_data'], dict):
                                 safe_tc['test_data'] = {str(k): v for k, v in tc['test_data'].items()}
+                            
+                            # Handle RAG reference
+                            if 'rag_ref' in tc and tc['rag_ref']:
+                                safe_tc['rag_ref'] = str(tc['rag_ref'])
                         
                         elif isinstance(tc, str):
                             safe_tc['description'] = tc
@@ -560,6 +587,10 @@ def main():
                                 st.write("**Expected Results:**")
                                 for j, result in enumerate(safe_tc['expected_results'], 1):
                                     st.write(f"{j}. {result}")
+                            
+                            # RAG Reference (Proof it worked)
+                            if safe_tc['rag_ref']:
+                                st.info(f"💡 **RAG Reference:** {safe_tc['rag_ref']}")
                             
                             # Test Data
                             if safe_tc['test_data']:
@@ -1407,19 +1438,13 @@ def save_prompt_template(template_name: str, content: str) -> bool:
 
 
 if __name__ == "__main__":
-    # Install uvloop for better async performance if available
+    # Apply nest_asyncio to allow nested event loops (useful for Streamlit)
     try:
-        import uvloop
-        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    except ImportError:
-        pass  # uvloop not available, use default asyncio
-    
-    # Create an event loop and run the async code
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
-    # Run the Streamlit app with async support
-    nest_asyncio.apply()
+        import nest_asyncio
+        nest_asyncio.apply()
+    except Exception as e:
+        # Just log warning, don't crash if it fails (e.g. incompatible loop type)
+        print(f"Warning: Could not apply nest_asyncio: {e}")
     
     # Start the Streamlit app
     main()

@@ -16,7 +16,7 @@ from quality_engineering_agentic_framework.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def run_api_server(port: int = 8000) -> subprocess.Popen:
+def run_api_server(port: int = 8080) -> subprocess.Popen:
     """
     Run the FastAPI server in a subprocess.
     
@@ -112,7 +112,7 @@ def run_streamlit_app(port: int = 8501) -> subprocess.Popen:
     return process
 
 
-def run_web(api_port: int = 8000, ui_port: int = 8501, open_browser: bool = True) -> None:
+def run_web(api_port: int = 8080, ui_port: int = 8501, open_browser: bool = True) -> None:
     """
     Run the web interface.
     

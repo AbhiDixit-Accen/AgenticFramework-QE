@@ -64,7 +64,7 @@ def fallback_generate_test_cases(requirements_text, llm_config, api_url=None):
                 response_data = response.json()
                 if "test_cases" in response_data and response_data["test_cases"]:
                     print("Successfully generated test cases using API")
-                    return response_data["test_cases"]
+                    return response_data
         except Exception as api_error:
             print(f"API fallback failed: {api_error}")
     
@@ -165,6 +165,11 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
             if "artifacts" in msg and msg["artifacts"]:
                 if msg["artifacts"]["type"] == "test_cases" and "test_cases" in msg["artifacts"]:
                     test_cases = msg["artifacts"]["test_cases"]
+                    # Display product context if available in artifacts
+                    if "product_context" in msg["artifacts"] and msg["artifacts"]["product_context"]:
+                        with st.expander("🔍 View Synthesized Product Knowledge (RAG)"):
+                            st.markdown(msg["artifacts"]["product_context"])
+                            
                     with st.expander("View Test Cases"):
                         for i, tc in enumerate(test_cases, 1):
                             with st.expander(f"Test Case {i}: {tc.get('title', 'Untitled')}"):
@@ -182,9 +187,11 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
                                         st.write(f"• {action}")
                                 
                                 if tc.get('expected_results'):
-                                    st.write("**Expected Results:**")
                                     for result in tc['expected_results']:
                                         st.write(f"• {result}")
+                                
+                                if tc.get('rag_ref'):
+                                    st.info(f"💡 **RAG Reference:** {tc['rag_ref']}")
                         
                         # Download button
                         json_str = json.dumps(test_cases, indent=2)
@@ -223,7 +230,15 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
                         }
                         
                         # Generate test cases directly
-                        test_cases = fallback_generate_test_cases(user_input, llm_config, API_URL)
+                        response_data = fallback_generate_test_cases(user_input, llm_config, API_URL)
+                        
+                        # Extract data from response
+                        if isinstance(response_data, dict):
+                            test_cases = response_data.get("test_cases", [])
+                            product_context = response_data.get("product_context", "")
+                        else:
+                            test_cases = response_data
+                            product_context = ""
                         
                         # Create an assistant response
                         assistant_response = f"I'd be happy to generate test cases for you. Could you please provide more specific software requirements you'd like me to work with?"
@@ -280,7 +295,8 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
                             "timestamp": datetime.now().isoformat(),
                             "artifacts": {
                                 "type": "test_cases",
-                                "test_cases": test_cases
+                                "test_cases": test_cases,
+                                "product_context": product_context
                             }
                         }
                         st.session_state.chat_messages.append(assistant_message)

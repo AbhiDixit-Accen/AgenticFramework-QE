@@ -81,6 +81,7 @@ async def validation_exception_handler(request: Request, exc: Exception):
 @app.post("/api/test-case-generation")
 async def generate_test_cases(request: TestCaseGenerationRequest):
     """Generate test cases from requirements."""
+    print("\n\n!!! RECEIVED REQUEST AT /api/test-case-generation !!!\n\n")
     logger.info("=== Received test case generation request ===")
     logger.info(f"Requirements: {request.requirements[:100]}...")
     
@@ -97,9 +98,17 @@ async def generate_test_cases(request: TestCaseGenerationRequest):
         
         # Process requirements
         logger.info("Processing requirements...")
-        test_cases = await agent.process(request.requirements)
+        result = await agent.process(request.requirements)
         
-        # Ensure we have a list
+        # Extract test cases and product context
+        if isinstance(result, dict):
+            test_cases = result.get("test_cases", [])
+            product_context = result.get("product_context", "")
+        else:
+            test_cases = result
+            product_context = ""
+            
+        # Ensure we have a list for test cases
         if not isinstance(test_cases, list):
             logger.warning(f"Test cases is not a list, got: {type(test_cases)}")
             test_cases = [test_cases] if test_cases else []
@@ -107,7 +116,10 @@ async def generate_test_cases(request: TestCaseGenerationRequest):
         logger.info(f"Generated {len(test_cases)} test cases")
         
         # Return the response
-        response = {"test_cases": test_cases}
+        response = {
+            "test_cases": test_cases,
+            "product_context": product_context
+        }
         logger.info("Sending response...")
         return response
         

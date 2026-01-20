@@ -49,6 +49,7 @@ class TestCaseGenerationRequest(BaseModel):
 class TestCaseGenerationResponse(BaseModel):
     """Response model for test case generation."""
     test_cases: List[TestCase]
+    product_context: Optional[str] = Field(None, description="Synthesized product context from RAG")
 
 
 class APITestCaseGenerationRequest(BaseModel):
@@ -132,6 +133,7 @@ class TestCaseArtifact(ChatArtifact):
     """Test case artifact model."""
     type: str = "test_cases"
     test_cases: List[TestCase]
+    product_context: Optional[str] = Field(None, description="Synthesized product context from RAG")
 
 
 class TestScriptArtifact(ChatArtifact):

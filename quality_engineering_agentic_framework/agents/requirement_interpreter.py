@@ -13,6 +13,7 @@ from quality_engineering_agentic_framework.agents.agent_interface import AgentIn
 from quality_engineering_agentic_framework.llm.llm_interface import LLMInterface
 from quality_engineering_agentic_framework.utils.logger import get_logger
 from quality_engineering_agentic_framework.web.api.models import ChatMessage, TestCase
+from quality_engineering_agentic_framework.utils.rag.rag_system import load_documents, split_documents, create_vector_db, synthesize_requirements
 
 logger = get_logger(__name__)
 
@@ -59,6 +60,10 @@ class TestCaseGenerationAgent(AgentInterface):
         default_template = """
         You are a test case generator that converts software requirements into structured test cases.
         
+        Product/System Context:
+        {product_context}
+        
+
         Given the following software requirement:
         
         {requirement}
@@ -95,16 +100,67 @@ class TestCaseGenerationAgent(AgentInterface):
         Returns:
             List of structured test cases
         """
+        print("\n\n!!! TestCaseGenerationAgent.process CALLED !!!\n\n")
         logger.info("Processing requirements with Test Case Generation agent")
         
         # Update context
         self.context["last_requirements"] = input_data
         
-        # Prepare the prompt
-        prompt = self.prompt_template.format(
-            requirement=input_data,
-            output_format=self.output_format
-        )
+        # 1. Synthesize Product/System Context using RAG
+        # Note: In a production scenario, we might want to cache this or initialize it 
+        # outside the request loop if the documents don't change often.
+        try:
+            # Re-using the functions from rag_system module
+            logger.info("Calling RAG: load_documents")
+            documents = load_documents()
+            
+            if not documents:
+                logger.warning("No documents found in RAG directory.")
+                product_context = "No specific project documentation found."
+            else:
+                logger.info(f"Loaded {len(documents)} documents")
+                chunks = split_documents(documents)
+                api_key = self.llm.config.get('api_key') if hasattr(self.llm, 'config') else None
+                vector_db = create_vector_db(chunks, openai_api_key=api_key)
+                product_context = synthesize_requirements(vector_db, openai_api_key=api_key)
+                
+            if not product_context:
+                product_context = "No specific project documentation found."
+                
+        except Exception as e:
+            logger.error(f"Failed to synthesize requirements via RAG: {e}")
+            product_context = "No specific project documentation found."
+
+        
+        # Prepare the final prompt with product context
+        prompt = f"""
+        ### PROJECT SOURCE OF TRUTH (Product Details)
+        The following information is the authoritative documentation for the software under test. 
+        Treat this as your primary reference for all feature behavior, technical details, and business rules.
+        
+        --- START PROJECT DETAILS ---
+        {product_context}
+        --- END PROJECT DETAILS ---
+        
+        ### USER REQUIREMENT
+        The user wants to test the following:
+        "{input_data}"
+        
+        ### INSTRUCTION
+        Please generate comprehensive test cases based on the User Requirement above.
+        - If 'Project Source of Truth' contains specific details, use them to fill in all missing data and logic.
+        - If 'Project Source of Truth' indicates no documentation was found, use general industry standards and best practices for the domain mentioned in the User Requirement.
+        
+        Cite your sources in the 'rag_ref' field (if no documentation, mention 'General Knowledge').
+        """
+        
+        print("\n" + "#" * 80)
+        print("FINAL PROMPT SENT TO LLM (VERIFY RAG CONTENT BELOW)")
+        print("#" * 80)
+        print(f"\nPRODUCT CONTEXT RETRIEVED:\n{product_context[:1000]}...\n")
+        print("#" * 80 + "\n")
+        
+        logger.info(f"Generated Prompt (First 2000 chars):\n{prompt[:2000]}...")
         
         # Define the expected JSON schema for the output
         json_schema = {
@@ -120,9 +176,10 @@ class TestCaseGenerationAgent(AgentInterface):
                             "preconditions": {"type": "array", "items": {"type": "string"}},
                             "actions": {"type": "array", "items": {"type": "string"}},
                             "expected_results": {"type": "array", "items": {"type": "string"}},
-                            "test_data": {"type": "object"}
+                            "test_data": {"type": "object"},
+                            "rag_ref": {"type": "string", "description": "Cite a specific detail from the Product Context used in this test case"}
                         },
-                        "required": ["title", "preconditions", "actions", "expected_results"]
+                        "required": ["title", "preconditions", "actions", "expected_results", "rag_ref"]
                     }
                 }
             },
@@ -130,8 +187,18 @@ class TestCaseGenerationAgent(AgentInterface):
         }
         
         system_message = f"""
-        You are a test case generator that converts software requirements into structured test cases.
-        You must analyze the requirements carefully and create comprehensive test cases that cover all aspects.
+        You are a Quality Engineering Expert and Test Architect.
+        
+        Your mission is to map incoming "User Requirements" against the "Project Source of Truth" documentation.
+        
+        CRITICAL RULES:
+        1. AUTHORITATIVE DATA: Never use generic placeholders if the Project Details contain specific data (e.g., specific usernames like 'performance_glitch_user', specific error strings, or specific URLs).
+        2. BEHAVIORAL FIDELITY: Ensure the 'Actions' and 'Expected Results' exactly match the logic described in the Project Details.
+        3. PROJECT IDENTITY: Test cases should explicitly name the product (e.g., 'Verify SauceDemo Login') and reference its specific components.
+        4. DATA DICTIONARY: Populate the 'test_data' field with real values found in the Project Details.
+        
+        For each test case, you MUST populate the 'rag_ref' field with the specific section or quote from the Project Details that justifies this test case.
+        
         Your output must be in valid JSON format according to the provided schema.
         """
         
@@ -149,7 +216,10 @@ class TestCaseGenerationAgent(AgentInterface):
             # Update context
             self.context["last_generated_count"] = len(test_cases)
             
-            return test_cases
+            return {
+                "test_cases": test_cases,
+                "product_context": product_context
+            }
         
         except Exception as e:
             logger.error(f"Error generating test cases: {str(e)}")
