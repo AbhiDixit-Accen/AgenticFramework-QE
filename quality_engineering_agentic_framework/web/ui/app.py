@@ -489,12 +489,6 @@ def main():
             with st.expander("🔍 View Synthesized Product Knowledge (RAG Output)", expanded=False):
                 st.info("The information below was synthesized from your product documentation to provide context for test generation.")
                 st.markdown(st.session_state.product_context)
-                
-                # Add a helpful tip if documentation is missing
-                if "No specific project documentation found" in st.session_state.product_context:
-                    st.warning("💡 **Tip:** To provide specific context, place your requirement documents (.md, .txt, .pdf) in `quality_engineering_agentic_framework/utils/rag/data/requirements/`.")
-                elif "RAG Initialization Failed" in st.session_state.product_context or "RAG Error" in st.session_state.product_context:
-                    st.error("💡 **Tip:** Ensure your OpenAI API Key is valid and has access to the embedding model.")
         
         # Display test cases if available
         if 'test_cases' in st.session_state and st.session_state.test_cases:

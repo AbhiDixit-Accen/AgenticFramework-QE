@@ -43,45 +43,26 @@ REBUILD_DB = True   # MUST BE TRUE to pick up changes in overview.md
 # -----------------------------
 def load_documents():
     documents = []
-    
-    print(f"--- RAG DOCUMENT LOADING ---")
-    print(f"Looking for requirements in: {DATA_PATH}")
 
-    if not os.path.exists(DATA_PATH):
-        print(f"WARNING: DATA_PATH does not exist: {DATA_PATH}")
-        return []
-
-    files = os.listdir(DATA_PATH)
-    print(f"Found {len(files)} files in directory")
-
-    for file in files:
+    for file in os.listdir(DATA_PATH):
         file_path = os.path.join(DATA_PATH, file)
-        
-        if file.startswith("."): # Skip hidden files
-            continue
 
         if file.endswith((".txt", ".md")):
-            print(f"Loading text/md: {file}")
             documents.extend(
                 TextLoader(file_path).load()
             )
 
         elif file.endswith(".pdf"):
-            print(f"Loading pdf: {file}")
             documents.extend(
                 PyPDFLoader(file_path).load()
             )
 
         elif file.endswith(".docx"):
-            print(f"Loading docx: {file}")
             documents.extend(
                 Docx2txtLoader(file_path).load()
             )
-        else:
-            print(f"Skipping unsupported file type: {file}")
 
-    print(f"Total documents loaded: {len(documents)}")
-    print(f"---------------------------")
+    print(f"Loaded {len(documents)} documents")
     return documents
 
 

@@ -1,2 +1,0 @@
-recursive-include quality_engineering_agentic_framework/utils/rag/data *
-recursive-include quality_engineering_agentic_framework/utils/rag/vectordb *

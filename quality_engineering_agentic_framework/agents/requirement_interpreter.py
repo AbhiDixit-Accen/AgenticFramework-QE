@@ -115,32 +115,21 @@ class TestCaseGenerationAgent(AgentInterface):
             documents = load_documents()
             
             if not documents:
-                logger.warning("No documents found in RAG directory or directory missing.")
-                product_context = "No specific project documentation found. (Check your /data/requirements folder)"
+                logger.warning("No documents found in RAG directory.")
+                product_context = "No specific project documentation found."
             else:
                 logger.info(f"Loaded {len(documents)} documents")
                 chunks = split_documents(documents)
                 api_key = self.llm.config.get('api_key') if hasattr(self.llm, 'config') else None
-                
-                if not api_key:
-                    logger.warning("No API key found for RAG embedding generation.")
-                    product_context = "RAG Initialization Failed: Missing API Key. Please provide an OpenAI API Key in the sidebar/config."
-                else:
-                    vector_db = create_vector_db(chunks, openai_api_key=api_key)
-                    product_context = synthesize_requirements(vector_db, openai_api_key=api_key)
+                vector_db = create_vector_db(chunks, openai_api_key=api_key)
+                product_context = synthesize_requirements(vector_db, openai_api_key=api_key)
                 
             if not product_context:
                 product_context = "No specific project documentation found."
                 
         except Exception as e:
-            import traceback
-            logger.error(f"Failed to synthesize requirements via RAG: {type(e).__name__}: {e}")
-            logger.error(traceback.format_exc())
-            
-            if "api_key" in str(e).lower() or "authentication" in str(e).lower():
-                product_context = "RAG Error: Authentication/API Key issue. Please check your settings."
-            else:
-                product_context = f"RAG Error: {type(e).__name__}. Check logs for details."
+            logger.error(f"Failed to synthesize requirements via RAG: {e}")
+            product_context = "No specific project documentation found."
 
         
         # Prepare the final prompt with product context
