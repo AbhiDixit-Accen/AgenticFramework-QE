@@ -4,6 +4,10 @@ setup(
     name="quality_engineering_agentic_framework",
     version="0.1.0",
     packages=find_packages(),
+    include_package_data=True,
+    package_data={
+        "quality_engineering_agentic_framework.utils.rag": ["data/requirements/*"],
+    },
     install_requires=[
         "openai>=1.0.0",
         "google-generativeai>=0.3.0",
