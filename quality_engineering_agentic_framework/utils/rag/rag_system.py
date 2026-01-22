@@ -11,7 +11,7 @@ This script:
 """
 
 import os
-from langchain_community.document_loaders import TextLoader, PyPDFLoader
+from langchain_community.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
@@ -55,6 +55,11 @@ def load_documents():
         elif file.endswith(".pdf"):
             documents.extend(
                 PyPDFLoader(file_path).load()
+            )
+
+        elif file.endswith(".docx"):
+            documents.extend(
+                Docx2txtLoader(file_path).load()
             )
 
     print(f"Loaded {len(documents)} documents")
