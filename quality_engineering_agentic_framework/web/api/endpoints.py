@@ -15,6 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.encoders import jsonable_encoder
 import asyncio
+import subprocess
+import sys
 
 from quality_engineering_agentic_framework.web.api.models import (
     LLMConfig, AgentConfig, TestCase, 
@@ -391,10 +393,24 @@ async def chat_with_agent(request: ChatRequest, session_id: str = Query(None)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def check_dependencies():
+    """Check if all dependencies in requirements.txt are installed."""
+    try:
+        requirements_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "requirements.txt")
+        if os.path.exists(requirements_path):
+            logger.info(f"Checking dependencies from {requirements_path}...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", requirements_path])
+            logger.info("Dependencies updated successfully.")
+        else:
+            logger.warning(f"requirements.txt not found at {requirements_path}")
+    except Exception as e:
+        logger.error(f"Failed to update dependencies: {str(e)}")
+
 def start_api_server(port=8000):
     """Start the API server."""
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    # Using log_config=None avoids 'Unable to configure formatter 'default'' error in PyInstaller
+    uvicorn.run(app, host="0.0.0.0", port=port, log_config=None)
 
 
 if __name__ == "__main__":

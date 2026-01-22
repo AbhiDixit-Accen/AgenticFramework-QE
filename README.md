@@ -127,6 +127,16 @@ In the "Test Data Generation" tab:
 - Generate test data
 - View and download the results in JSON or CSV format
 
+On Mac: 
+Run python 
+'build_app.py '
+one last time to confirm everything is still perfect.
+
+On Windows: 
+Pull these changes, 
+run python 'build_app.py', 
+and it will generate the Windows executable for you!
+
 ## License
 
 [Your License]

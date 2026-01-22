@@ -11,6 +11,7 @@ This script:
 """
 
 import os
+import sys
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
@@ -22,11 +23,24 @@ from langchain_core.prompts import PromptTemplate
 # CONFIGURATION
 # -----------------------------
 
+# Handle frozen state paths for PyInstaller
+if getattr(sys, 'frozen', False):
+    # Resources are in sys._MEIPASS
+    BUNDLE_DIR = sys._MEIPASS
+else:
+    # Running from source
+    BUNDLE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Get directory containing this script
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH = os.path.join(BASE_DIR, "data", "requirements")
-DB_PATH = os.path.join(BASE_DIR, "vectordb")
+# Data path (read-only documentation)
+DATA_PATH = os.path.join(BUNDLE_DIR, "quality_engineering_agentic_framework", "utils", "rag", "data", "requirements")
+
+# Database path (must be writable)
+# We use a user-specific directory for the vector database to ensure write permissions
+USER_HOME = os.path.expanduser("~")
+DB_PATH = os.path.join(USER_HOME, ".qeaf", "vectordb")
+
+# Ensure the database directory exists
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
 
 EMBEDDING_MODEL = "text-embedding-3-small"

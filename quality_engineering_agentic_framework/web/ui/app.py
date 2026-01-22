@@ -42,7 +42,7 @@ if 'generate_data' not in st.session_state:
     st.session_state.llm_temperature = 0.7
     st.session_state.llm_max_tokens = 1000
 
-async def generate_test_cases(requirements, llm_provider, llm_model, llm_api_key, llm_temperature, llm_max_tokens, mode="requirement"):
+def generate_test_cases(requirements, llm_provider, llm_model, llm_api_key, llm_temperature, llm_max_tokens, mode="requirement"):
     """Generate test cases by calling the correct backend API based on mode."""
     print("\n=== Starting generate_test_cases ===")
     print(f"Requirements: {requirements[:100]}...")
@@ -456,14 +456,14 @@ def main():
                 with st.spinner("Generating comprehensive test cases... (this may take a moment)"):
                     try:
                         # Generate test cases using the API
-                        result = asyncio.run(generate_test_cases(
+                        result = generate_test_cases(
                             requirements=requirements_text,
                             llm_provider=llm_provider,
                             llm_model=llm_model,
                             llm_api_key=llm_api_key,
                             llm_temperature=llm_temperature,
                             llm_max_tokens=llm_max_tokens
-                        ))
+                        )
                         
                         if isinstance(result, dict):
                             test_cases = result.get("test_cases", [])
