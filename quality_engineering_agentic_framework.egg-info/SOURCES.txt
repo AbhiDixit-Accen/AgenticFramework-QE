@@ -10,8 +10,11 @@ quality_engineering_agentic_framework.egg-info/requires.txt
 quality_engineering_agentic_framework.egg-info/top_level.txt
 quality_engineering_agentic_framework/agents/__init__.py
 quality_engineering_agentic_framework/agents/agent_interface.py
+quality_engineering_agentic_framework/agents/api_test_case_creation.py
 quality_engineering_agentic_framework/agents/requirement_interpreter.py
 quality_engineering_agentic_framework/agents/test_data_generator.py
+quality_engineering_agentic_framework/agents/test_data_generator_old.py
+quality_engineering_agentic_framework/agents/test_script_generator without locator.py
 quality_engineering_agentic_framework/agents/test_script_generator.py
 quality_engineering_agentic_framework/cli/__init__.py
 quality_engineering_agentic_framework/cli/cli.py
@@ -27,10 +30,20 @@ quality_engineering_agentic_framework/web/__init__.py
 quality_engineering_agentic_framework/web/run_web.py
 quality_engineering_agentic_framework/web/api/__init__.py
 quality_engineering_agentic_framework/web/api/endpoints.py
+quality_engineering_agentic_framework/web/api/main.py
 quality_engineering_agentic_framework/web/api/models.py
 quality_engineering_agentic_framework/web/ui/__init__.py
+quality_engineering_agentic_framework/web/ui/agent_chat.py
 quality_engineering_agentic_framework/web/ui/app.py
+quality_engineering_agentic_framework/web/ui/chat_bot.py
+quality_engineering_agentic_framework/web/ui/chat_tab.py
+quality_engineering_agentic_framework/web/ui/chat_ui.py
+quality_engineering_agentic_framework/web/ui/clean_app.py
+quality_engineering_agentic_framework/web/ui/simple_app.py
 tests/__init__.py
+tests/manual_rag_verification.py
 tests/test_llm_factory.py
+tests/test_rag_integration.py
+tests/test_rag_output.py
 tests/test_requirement_interpreter.py
 tests/test_test_case_generation.py

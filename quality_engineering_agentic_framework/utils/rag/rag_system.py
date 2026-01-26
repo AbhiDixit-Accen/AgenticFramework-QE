@@ -29,8 +29,8 @@ DATA_PATH = os.path.join(BASE_DIR, "data", "requirements")
 DB_PATH = os.path.join(BASE_DIR, "vectordb")
 
 
-EMBEDDING_MODEL = "text-embedding-3-small"
-LLM_MODEL = "gpt-4o-mini"
+EMBEDDING_MODEL = "text-embedding-3-large"
+LLM_MODEL = "gpt-4o-mini"  # Default model, can be overridden by frontend
 
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
@@ -47,20 +47,28 @@ def load_documents():
     for file in os.listdir(DATA_PATH):
         file_path = os.path.join(DATA_PATH, file)
 
-        if file.endswith((".txt", ".md")):
-            documents.extend(
-                TextLoader(file_path).load()
-            )
+        try:
+            if file.endswith((".txt", ".md")):
+                documents.extend(
+                    TextLoader(file_path).load()
+                )
 
-        elif file.endswith(".pdf"):
-            documents.extend(
-                PyPDFLoader(file_path).load()
-            )
+            elif file.endswith(".pdf"):
+                try:
+                    documents.extend(
+                        PyPDFLoader(file_path).load()
+                    )
+                except ImportError as e:
+                    print(f"[RAG] Warning: Skipping PDF file {file} - pypdf not available: {e}")
+                    continue
 
-        elif file.endswith(".docx"):
-            documents.extend(
-                Docx2txtLoader(file_path).load()
-            )
+            elif file.endswith(".docx"):
+                documents.extend(
+                    Docx2txtLoader(file_path).load()
+                )
+        except Exception as e:
+            print(f"[RAG] Warning: Failed to load {file}: {e}")
+            continue
 
     print(f"Loaded {len(documents)} documents")
     return documents
@@ -110,21 +118,24 @@ def create_vector_db(chunks, openai_api_key=None):
 # -----------------------------
 # STEP 4: SYNTHESIZE REQUIREMENTS
 # -----------------------------
-def synthesize_requirements(db, openai_api_key=None):
+def synthesize_requirements(db, openai_api_key=None, model=None):
     """
     Produces a structured, reusable knowledge context
     from retrieved requirement chunks.
     """
+    
+    # Use provided model or fall back to default
+    llm_model = model if model else LLM_MODEL
 
     if openai_api_key:
         llm = ChatOpenAI(
-            model=LLM_MODEL,
+            model=llm_model,
             temperature=0,
             api_key=openai_api_key
         )
     else:
         llm = ChatOpenAI(
-            model=LLM_MODEL,
+            model=llm_model,
             temperature=0
         )
 

@@ -58,7 +58,7 @@ class TestCaseGenerationAgent(AgentInterface):
             Prompt template as a string
         """
         default_template = """
-        You are a test case generator that converts software requirements into structured test cases.
+        You are a test case generator and working a senior QA engineer that converts software requirements into structured test cases.
         
         Product/System Context:
         {product_context}
@@ -68,7 +68,7 @@ class TestCaseGenerationAgent(AgentInterface):
         
         {requirement}
         
-        Generate only 1 unique, non-redundant test cases as possible, covering all combinations, edge cases, and scenarios, in {output_format} format.
+        Generate required unique, non-redundant test cases as possible, covering all combinations, edge cases, and scenarios, in {output_format} format.
         
         Each test case should include:
         - A clear title/description
@@ -112,23 +112,53 @@ class TestCaseGenerationAgent(AgentInterface):
         try:
             # Re-using the functions from rag_system module
             logger.info("Calling RAG: load_documents")
+            print("[RAG DEBUG] Starting RAG system...")
             documents = load_documents()
             
             if not documents:
                 logger.warning("No documents found in RAG directory.")
+                print("[RAG DEBUG] No documents found in RAG directory")
                 product_context = "No specific project documentation found."
             else:
                 logger.info(f"Loaded {len(documents)} documents")
+                print(f"[RAG DEBUG] Successfully loaded {len(documents)} documents")
+                
                 chunks = split_documents(documents)
+                print(f"[RAG DEBUG] Split into {len(chunks)} chunks")
+                
                 api_key = self.llm.config.get('api_key') if hasattr(self.llm, 'config') else None
-                vector_db = create_vector_db(chunks, openai_api_key=api_key)
-                product_context = synthesize_requirements(vector_db, openai_api_key=api_key)
+                llm_model = self.llm.config.get('model') if hasattr(self.llm, 'config') else None
+                print(f"[RAG DEBUG] API Key available: {bool(api_key)}")
+                print(f"[RAG DEBUG] LLM Model: {llm_model}")
+                
+                try:
+                    print("[RAG DEBUG] Creating vector database...")
+                    vector_db = create_vector_db(chunks, openai_api_key=api_key)
+                    print("[RAG DEBUG] Vector DB created successfully")
+                except Exception as vdb_error:
+                    print(f"[RAG DEBUG] Vector DB creation FAILED: {str(vdb_error)}")
+                    logger.error(f"Vector DB creation failed: {vdb_error}")
+                    raise
+                
+                try:
+                    print("[RAG DEBUG] Synthesizing requirements...")
+                    product_context = synthesize_requirements(vector_db, openai_api_key=api_key, model=llm_model)
+                    print("[RAG DEBUG] Requirements synthesized successfully")
+                except Exception as synth_error:
+                    print(f"[RAG DEBUG] Synthesis FAILED: {str(synth_error)}")
+                    logger.error(f"Synthesis failed: {synth_error}")
+                    raise
                 
             if not product_context:
                 product_context = "No specific project documentation found."
+                print("[RAG DEBUG] Product context is empty, using default message")
                 
         except Exception as e:
+            import traceback
+            print(f"[RAG DEBUG] EXCEPTION CAUGHT: {type(e).__name__}: {str(e)}")
+            print(f"[RAG DEBUG] Traceback: {traceback.format_exc()}")
             logger.error(f"Failed to synthesize requirements via RAG: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             product_context = "No specific project documentation found."
 
         

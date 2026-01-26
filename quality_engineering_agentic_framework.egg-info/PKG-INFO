@@ -1,8 +1,22 @@
-Metadata-Version: 2.1
-Name: quality-engineering-agentic-framework
+Metadata-Version: 2.4
+Name: quality_engineering_agentic_framework
 Version: 0.1.0
 Summary: Quality Engineering Agentic Framework for automated test generation using LLMs
 Author: Your Name
 Author-email: your.email@example.com
 Keywords: testing,automation,llm,ai,agents
 Requires-Python: >=3.8
+Requires-Dist: openai>=1.0.0
+Requires-Dist: google-generativeai>=0.3.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: selenium>=4.10.0
+Requires-Dist: webdriver-manager>=4.0.0
+Requires-Dist: pytest>=7.0.0
+Requires-Dist: click>=8.0.0
+Requires-Dist: pandas>=2.0.0
+Dynamic: author
+Dynamic: author-email
+Dynamic: keywords
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
