@@ -13,7 +13,7 @@ from quality_engineering_agentic_framework.agents.agent_interface import AgentIn
 from quality_engineering_agentic_framework.llm.llm_interface import LLMInterface
 from quality_engineering_agentic_framework.utils.logger import get_logger
 from quality_engineering_agentic_framework.web.api.models import ChatMessage, TestCase
-from quality_engineering_agentic_framework.utils.rag.rag_system import load_documents, split_documents, create_vector_db, synthesize_requirements
+from quality_engineering_agentic_framework.utils.rag.rag_system import load_documents, split_documents, create_vector_db, synthesize_requirements, synthesize_requirements_for_query
 
 logger = get_logger(__name__)
 
@@ -141,9 +141,16 @@ class TestCaseGenerationAgent(AgentInterface):
                     raise
                 
                 try:
-                    print("[RAG DEBUG] Synthesizing requirements...")
-                    product_context = synthesize_requirements(vector_db, openai_api_key=api_key, model=llm_model)
-                    print("[RAG DEBUG] Requirements synthesized successfully")
+                    print("[RAG DEBUG] Retrieving relevant context based on user input...")
+                    # Use query-based synthesis to get comprehensive related context
+                    product_context = synthesize_requirements_for_query(
+                        vector_db, 
+                        query=input_data,
+                        openai_api_key=api_key, 
+                        model=llm_model,
+                        top_k=20  # Retrieve top 20 chunks for comprehensive coverage
+                    )
+                    print("[RAG DEBUG] Context retrieved and synthesized successfully")
                 except Exception as synth_error:
                     print(f"[RAG DEBUG] Synthesis FAILED: {str(synth_error)}")
                     logger.error(f"Synthesis failed: {synth_error}")

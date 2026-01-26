@@ -1,0 +1,114 @@
+Engage Portal – Functional Requirements Document
+Purpose:
+This document defines the functional flow and key features of the Engage portal. It will be used as a source document for building a Retrieval-Augmented Generation (RAG) system.
+
+1. Application Overview
+
+
+Application Name: Engage
+
+
+Base URL: https://engage.accenture.com/
+
+
+Authentication Type: Accenture MFA and SSO
+
+
+Target Users: Accenture employees
+
+
+
+2. Authentication and Login Flow
+2.1 Initial Access
+
+
+When a user navigates to the URL https://engage.accenture.com/ and presses Enter, the system redirects the user to the Accenture MFA authentication page.
+
+
+2.2 MFA Page
+
+
+The MFA page displays a button labeled “Continue with Accenture”.
+
+
+2.3 SSO Authentication
+
+
+When the user clicks “Continue with Accenture”:
+
+
+The system redirects the user to the Accenture Single Sign-On (SSO) page.
+
+
+The user completes authentication using Accenture credentials.
+
+
+Upon successful login, the user is authenticated into the Engage application.
+
+
+
+
+
+3. Home Page Validation
+3.1 Home Page Availability
+
+
+After successful login, the system displays the Engage home page.
+
+
+The home page title must be “Welcome to Engage”.
+
+
+3.2 Main Categories
+The home page contains three main functional categories:
+
+
+Find Top Talent
+
+
+Discover My Next Role
+
+
+Skills Distribution
+
+
+
+4. Find Top Talent – People Search
+4.1 Navigation
+
+
+When the user clicks on “Find Top Talent”, the system navigates to a new page.
+
+
+4.2 People Page
+
+
+The destination page is named “People”.
+
+
+4.3 Search and Filter Capabilities
+
+
+The People page allows users to search and filter individuals.
+
+
+Available selection fields include (but are not limited to):
+
+
+Name
+
+
+Organization
+
+
+Other person-related attributes (as applicable)
+
+
+
+
+4.4 Purpose
+
+
+The People page enables users to identify and search for individuals based on selected criteria.
+
+

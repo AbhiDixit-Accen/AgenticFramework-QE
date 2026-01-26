@@ -182,6 +182,73 @@ Comprehensive Requirements Synthesis:
     return response.content
 
 
+def synthesize_requirements_for_query(db, query: str, openai_api_key=None, model=None, top_k=10):
+    """
+    Retrieves and synthesizes requirements relevant to a specific user query.
+    Uses semantic search to find the most relevant chunks.
+    
+    Args:
+        db: Vector database instance
+        query: User's requirement query (e.g., "test performance")
+        openai_api_key: Optional OpenAI API key
+        model: Optional LLM model name
+        top_k: Number of relevant chunks to retrieve
+    
+    Returns:
+        Synthesized context relevant to the query
+    """
+    # Use provided model or fall back to default
+    llm_model = model if model else LLM_MODEL
+
+    if openai_api_key:
+        llm = ChatOpenAI(
+            model=llm_model,
+            temperature=0,
+            api_key=openai_api_key
+        )
+    else:
+        llm = ChatOpenAI(
+            model=llm_model,
+            temperature=0
+        )
+
+    # Perform semantic search to get relevant chunks
+    relevant_docs = db.similarity_search(query, k=top_k)
+    
+    if not relevant_docs:
+        return "No relevant documentation found for your query."
+    
+    # Combine the relevant chunks
+    context = "\n\n".join([doc.page_content for doc in relevant_docs])
+
+    prompt = PromptTemplate(
+        template="""
+You are a senior requirements analyst.
+
+The user wants to test: "{query}"
+
+Using the retrieved context below, synthesize a comprehensive representation of ALL requirements and information related to this topic.
+
+CRITICAL INSTRUCTIONS:
+- COMPREHENSIVE COVERAGE: Include ALL information related to the user's input, even tangentially related details.
+- PRESERVE SPECIFICS: Do not omit specific names, error messages, usernames, endpoint URLs, or header names.
+- NO HALLUCINATION: Use only the provided context. If a detail is missing, do not invent it.
+- STRUCTURED OUTPUT: Organize the information clearly with appropriate headings.
+- SUPPORT TEST CREATION: Include all details that would help create thorough test cases.
+
+Retrieved Context:
+{context}
+
+Comprehensive Requirements Related to "{query}":
+""",
+        input_variables=["query", "context"],
+    )
+
+    response = llm.invoke(prompt.format(query=query, context=context))
+
+    return response.content
+
+
 # -----------------------------
 # MAIN PIPELINE
 # -----------------------------
