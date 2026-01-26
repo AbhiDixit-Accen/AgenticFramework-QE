@@ -401,7 +401,7 @@ def main():
             llm_api_key = st.session_state[f"{llm_provider}_api_key"]
     
     # Main content - tabs
-    tab_names = ["Test Case Generation", "Test Script Generation", "Test Data Generation", "Chat Bot", "API Test Case Generation"]
+    tab_names = ["Requirements Hub", "Test Case Generation", "Test Script Generation", "Test Data Generation", "Chat Bot", "API Test Case Generation"]
     
     # Create tabs and verify count
     try:
@@ -411,16 +411,17 @@ def main():
             st.stop()
         
         # Verify tab indices are within bounds
-        if len(tabs) < 5:
-            st.error(f"Not enough tabs created. Expected 5, got {len(tabs)}.")
+        if len(tabs) < 6:
+            st.error(f"Not enough tabs created. Expected 6, got {len(tabs)}.")
             st.stop()
         
         # Define tab indices as constants for better maintainability
-        TAB_TEST_CASE_GEN = 0
-        TAB_TEST_SCRIPT_GEN = 1
-        TAB_TEST_DATA_GEN = 2
-        TAB_CHAT_BOT = 3
-        TAB_API_TEST_CASE_GEN = 4
+        TAB_REQUIREMENTS_HUB = 0
+        TAB_TEST_CASE_GEN = 1
+        TAB_TEST_SCRIPT_GEN = 2
+        TAB_TEST_DATA_GEN = 3
+        TAB_CHAT_BOT = 4
+        TAB_API_TEST_CASE_GEN = 5
         
     except Exception as e:
         st.error(f"Error creating tabs: {str(e)}")
@@ -683,6 +684,196 @@ def main():
                         )
                 except Exception as e:
                     st.error(f"Error generating CSV: {str(e)}")
+    
+    # Requirements Hub Tab
+    with tabs[TAB_REQUIREMENTS_HUB]:
+        st.header("📚 Requirements Hub")
+        st.write("Manage your requirement documents for the RAG (Retrieval-Augmented Generation) system")
+        
+        # Initialize session state for selected documents
+        if 'selected_documents' not in st.session_state:
+            st.session_state.selected_documents = []
+        
+        # Helper function to clear vector DB
+        def clear_vector_db():
+            """Clear the vector database and cache"""
+            from quality_engineering_agentic_framework.utils.rag.rag_system import DB_PATH
+            import shutil
+            
+            if os.path.exists(DB_PATH):
+                try:
+                    shutil.rmtree(DB_PATH)
+                    print(f"[Requirements Hub] Cleared vector DB at {DB_PATH}")
+                    return True
+                except Exception as e:
+                    print(f"[Requirements Hub] Failed to clear vector DB: {e}")
+                    return False
+            return True
+        
+        # Document List Section with Selection
+        st.subheader("📄 Select Documents for Test Generation")
+        st.info("Select which documents to use for generating test cases. The vector database will be rebuilt using only the selected documents.")
+        
+        try:
+            from quality_engineering_agentic_framework.utils.rag.rag_system import DATA_PATH
+            
+            if os.path.exists(DATA_PATH):
+                files = sorted([f for f in os.listdir(DATA_PATH) if os.path.isfile(os.path.join(DATA_PATH, f))])
+                
+                if not files:
+                    st.warning("No requirement documents found. Add documents below to get started.")
+                else:
+                    # Select/Deselect All buttons
+                    col_all, col_none, col_info = st.columns([1, 1, 3])
+                    with col_all:
+                        if st.button("✅ Select All"):
+                            st.session_state.selected_documents = files.copy()
+                            clear_vector_db()
+                            st.rerun()
+                    with col_none:
+                        if st.button("❌ Deselect All"):
+                            st.session_state.selected_documents = []
+                            clear_vector_db()
+                            st.rerun()
+                    with col_info:
+                        st.caption(f"{len(st.session_state.selected_documents)} of {len(files)} documents selected")
+                    
+                    st.divider()
+                    
+                    # Display documents with checkboxes and delete buttons
+                    for filename in files:
+                        file_path = os.path.join(DATA_PATH, filename)
+                        file_stats = os.stat(file_path)
+                        
+                        col1, col2, col3, col4 = st.columns([0.5, 3, 1.5, 1])
+                        
+                        with col1:
+                            is_selected = filename in st.session_state.selected_documents
+                            if st.checkbox("", value=is_selected, key=f"select_{filename}", label_visibility="collapsed"):
+                                if filename not in st.session_state.selected_documents:
+                                    st.session_state.selected_documents.append(filename)
+                                    clear_vector_db()
+                                    st.rerun()
+                            else:
+                                if filename in st.session_state.selected_documents:
+                                    st.session_state.selected_documents.remove(filename)
+                                    clear_vector_db()
+                                    st.rerun()
+                        
+                        with col2:
+                            icon = "✅" if is_selected else "📄"
+                            st.write(f"{icon} **{filename}**")
+                        
+                        with col3:
+                            st.caption(f"{file_stats.st_size:,} bytes")
+                        
+                        with col4:
+                            if st.button("🗑️", key=f"del_{filename}", help="Delete document"):
+                                try:
+                                    os.remove(file_path)
+                                    if filename in st.session_state.selected_documents:
+                                        st.session_state.selected_documents.remove(filename)
+                                    clear_vector_db()
+                                    st.success(f"Deleted {filename}")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Failed to delete: {str(e)}")
+            else:
+                st.warning(f"Requirements directory not found: {DATA_PATH}")
+        except Exception as e:
+            st.error(f"Error loading documents: {str(e)}")
+        
+        st.divider()
+        
+        # Upload Document Section
+        st.subheader("📤 Upload Requirement Document")
+        upload_file = st.file_uploader("Choose a file to upload", type=["txt", "md", "pdf", "docx"], key="upload_req_file")
+        
+        if upload_file is not None:
+            col_upload, col_cancel = st.columns([1, 3])
+            with col_upload:
+                if st.button("Upload & Select", key="upload_btn"):
+                    try:
+                        from quality_engineering_agentic_framework.utils.rag.rag_system import DATA_PATH
+                        
+                        file_path = os.path.join(DATA_PATH, upload_file.name)
+                        os.makedirs(DATA_PATH, exist_ok=True)
+                        
+                        with open(file_path, 'wb') as f:
+                            f.write(upload_file.getvalue())
+                        
+                        # Automatically select the uploaded file
+                        if upload_file.name not in st.session_state.selected_documents:
+                            st.session_state.selected_documents.append(upload_file.name)
+                        
+                        # Clear vector DB to force rebuild
+                        clear_vector_db()
+                        
+                        st.success(f"✅ Uploaded and selected '{upload_file.name}'")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error uploading file: {str(e)}")
+        
+        st.divider()
+        
+        # Create New Document Section
+        with st.expander("✍️ Create New Document from Text"):
+            new_doc_name = st.text_input("Document Filename", placeholder="e.g., login_requirements.md", key="new_doc_name")
+            new_doc_content = st.text_area("Document Content", height=200, placeholder="Enter your requirements here...", key="new_doc_content")
+            
+            if st.button("Create & Select Document", key="create_doc_btn"):
+                if not new_doc_name or not new_doc_content:
+                    st.error("Please provide both filename and content.")
+                else:
+                    try:
+                        from quality_engineering_agentic_framework.utils.rag.rag_system import DATA_PATH
+                        
+                        # Ensure filename has extension
+                        if not new_doc_name.endswith(('.txt', '.md')):
+                            new_doc_name += '.md'
+                        
+                        file_path = os.path.join(DATA_PATH, new_doc_name)
+                        os.makedirs(DATA_PATH, exist_ok=True)
+                        
+                        with open(file_path, 'w') as f:
+                            f.write(new_doc_content)
+                        
+                        # Automatically select the new document
+                        if new_doc_name not in st.session_state.selected_documents:
+                            st.session_state.selected_documents.append(new_doc_name)
+                        
+                        # Clear vector DB to force rebuild
+                        clear_vector_db()
+                        
+                        st.success(f"✅ Created and selected '{new_doc_name}'")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error creating document: {str(e)}")
+        
+        st.divider()
+        
+        # Information Section
+        with st.expander("ℹ️ How It Works"):
+            st.markdown("""
+            ### Document Selection & Vector Database
+            
+            1. **Select Documents**: Check the boxes next to documents you want to use
+            2. **Automatic Rebuild**: The vector database is cleared and will be rebuilt using ONLY selected documents
+            3. **Upload/Create**: New documents are automatically selected and trigger a rebuild
+            4. **Delete**: Removing a document clears the vector DB for a fresh rebuild
+            
+            ### Test Case Generation
+            
+            - Only **selected documents** are indexed in the vector database
+            - When you enter requirements (e.g., "test performance"), the system searches only the selected documents
+            - This gives you precise control over which documentation influences test generation
+            
+            ### Tips
+            
+            - Select documents relevant to your current testing scope
+            - Deselect documents to exclude them from test generation
+            - The vector DB rebuilds automatically on the next test generation
+            """)
     
     # Test Script Generation Tab
     with tabs[TAB_TEST_SCRIPT_GEN]:

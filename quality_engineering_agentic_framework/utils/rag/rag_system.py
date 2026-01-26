@@ -41,10 +41,27 @@ REBUILD_DB = True   # MUST BE TRUE to pick up changes in overview.md
 # -----------------------------
 # STEP 1: LOAD REQUIREMENTS
 # -----------------------------
-def load_documents():
+def load_documents(file_list=None):
+    """
+    Load documents from the data directory.
+    
+    Args:
+        file_list: Optional list of specific filenames to load. If None, loads all files.
+    
+    Returns:
+        List of loaded documents
+    """
     documents = []
 
-    for file in os.listdir(DATA_PATH):
+    # Get list of files to process
+    if file_list:
+        files_to_load = [f for f in file_list if os.path.isfile(os.path.join(DATA_PATH, f))]
+        print(f"[RAG] Loading {len(files_to_load)} selected documents: {files_to_load}")
+    else:
+        files_to_load = [f for f in os.listdir(DATA_PATH) if os.path.isfile(os.path.join(DATA_PATH, f))]
+        print(f"[RAG] Loading all {len(files_to_load)} documents from {DATA_PATH}")
+
+    for file in files_to_load:
         file_path = os.path.join(DATA_PATH, file)
 
         try:

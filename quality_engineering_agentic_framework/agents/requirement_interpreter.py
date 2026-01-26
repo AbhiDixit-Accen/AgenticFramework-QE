@@ -113,7 +113,22 @@ class TestCaseGenerationAgent(AgentInterface):
             # Re-using the functions from rag_system module
             logger.info("Calling RAG: load_documents")
             print("[RAG DEBUG] Starting RAG system...")
-            documents = load_documents()
+            
+            # Get selected documents from session state if available
+            selected_docs = None
+            try:
+                import streamlit as st
+                if hasattr(st, 'session_state') and 'selected_documents' in st.session_state:
+                    selected_docs = st.session_state.selected_documents
+                    if selected_docs:
+                        print(f"[RAG DEBUG] Using {len(selected_docs)} selected documents: {selected_docs}")
+                    else:
+                        print("[RAG DEBUG] No documents selected, will use all documents")
+            except Exception as e:
+                print(f"[RAG DEBUG] Could not access session state: {e}, will use all documents")
+            
+            # Load documents (selected or all)
+            documents = load_documents(file_list=selected_docs)
             
             if not documents:
                 logger.warning("No documents found in RAG directory.")
