@@ -162,13 +162,13 @@ PRIMARY GOALS:
                 detected_lang = None
                 detected_framework = None
                 
-                lang_keywords = ["python", "java", "javascript", "c#", "typesript"]
+                lang_keywords = ["python", "java", "javascript", "typescript", "c#"]
                 for lang in lang_keywords:
                     if lang in user_input.lower():
                         detected_lang = lang
                         break
                 
-                framework_keywords = ["pytest", "unittest", "robot", "junit", "testng", "cucumber", "jest", "mocha", "cypress", "nunit", "xunit", "mstest"]
+                framework_keywords = ["pytest", "unittest", "robot", "junit", "testng", "cucumber", "jest", "mocha", "cypress", "nunit", "xunit", "mstest", "playwright", "webdriverio"]
                 for fw in framework_keywords:
                     if fw in user_input.lower():
                         detected_framework = fw

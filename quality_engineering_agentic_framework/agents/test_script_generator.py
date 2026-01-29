@@ -1,7 +1,7 @@
 """
 Test Script Generator Agent
 
-Transforms structured test cases or rendered DOM into executable Selenium test scripts
+Transforms structured test cases or rendered DOM into executable automation test scripts (Selenium, Playwright, etc.)
 for any language, framework, and project structure.
 """
 
@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 
 class TestScriptGenerator(AgentInterface):
     """
-    Generates executable Selenium test scripts from structured test cases or rendered DOM.
+    Generates executable web automation test scripts (Selenium, Playwright, etc.) from structured test cases or rendered DOM.
     Fully supports multiple languages, frameworks, and project structures.
     """
 
@@ -42,10 +42,11 @@ class TestScriptGenerator(AgentInterface):
 
     def _validate_config(self):
         valid_languages = {
-            "python": ["pytest", "unittest", "robot"],
-            "java": ["junit", "testng", "cucumber"],
-            "javascript": ["jest", "mocha", "cypress"],
-            "c#": ["nunit", "xunit", "mstest"]
+            "python": ["pytest", "unittest", "robot", "playwright"],
+            "java": ["junit", "testng", "cucumber", "playwright", "selenide"],
+            "javascript": ["jest", "mocha", "cypress", "playwright"],
+            "typescript": ["jest", "mocha", "cypress", "playwright", "webdriverio"],
+            "c#": ["nunit", "xunit", "mstest", "playwright"]
         }
         if self.language not in valid_languages:
             raise ValueError(f"Unsupported language: {self.language}. Supported: {', '.join(valid_languages.keys())}")
@@ -62,7 +63,7 @@ class TestScriptGenerator(AgentInterface):
                 logger.warning(f"Failed to load prompt template: {e}")
         
         return """
-        You are a senior test automation engineer. Generate fully working Selenium automation scripts.
+        You are a senior test automation engineer. Generate fully working web automation scripts using {framework}.
         Requirements:
         - Language: {language}
         - Framework: {framework}
@@ -77,10 +78,11 @@ class TestScriptGenerator(AgentInterface):
         - Generate fully executable code
         - Include Page Objects and utility classes
         - Use best practices for {language} + {framework}
-        - Include imports, waits, error handling, and assertions
-        - Ensure **page load is complete** before interacting with elements
-        - Use **explicit waits** for web elements (presence, visibility, clickable) before actions
-        - Apply waits in a language/framework-specific way that works seamlessly
+        - Include imports, assertions, and proper error handling
+        - Handle Synchronization:
+            * For Selenium/Appium: Use explicit waits for element visibility/clickability.
+            * For Playwright/Cypress: Rely on native auto-waiting where appropriate.
+        - Ensure scripts are maintainable and follow the provided project structure.
         - Format each file in a code block with filename and extension:
         ```{language}:filename.{extension}
         // code
@@ -93,7 +95,7 @@ class TestScriptGenerator(AgentInterface):
         rendered_dom: Optional[str] = None
     ) -> Dict[str, str]:
         """
-        Process structured test cases or a rendered DOM to generate Selenium scripts.
+        Process structured test cases or a rendered DOM to generate automation scripts.
         """
         locator_info = {}
 
@@ -163,7 +165,7 @@ class TestScriptGenerator(AgentInterface):
             test_cases_str += "Expected Results:\n" + "\n".join(f"- {r}" for r in tc.get("expected_results", [])) + "\n\n"
 
         # Prepare prompt for LLM
-        file_extensions = {"python": "py", "java": "java", "javascript": "js", "c#": "cs"}
+        file_extensions = {"python": "py", "java": "java", "javascript": "js", "typescript": "ts", "c#": "cs"}
         ext = file_extensions.get(self.language, "txt")
         language_name = self.language.capitalize()
 
@@ -179,10 +181,10 @@ class TestScriptGenerator(AgentInterface):
         )
 
         system_message = f"""
-        You are a senior test automation engineer. Generate Selenium test scripts with Page Objects using
-        multiple locator strategies (id, name, class, CSS selector, XPath) for all elements.
-        Include proper waits for page load and web elements, error handling, and assertions.
-        Use the structured locator JSON as reference for element selectors.
+        You are a senior test automation engineer. Generate {self.framework} test scripts with Page Objects using
+        multiple locator strategies (id, name, class, CSS selector, XPath) where appropriate.
+        Ensure scripts use best practices for {self.language} + {self.framework}, including proper 
+        synchronization (waits), error handling, and robust assertions.
         """
 
         try:

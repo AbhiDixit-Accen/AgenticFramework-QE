@@ -723,17 +723,18 @@ def main():
                 # Language selection
                 language = st.selectbox(
                     "Programming Language",
-                    options=["Python", "JavaScript", "Java", "C#"],
+                    options=["Python", "JavaScript", "TypeScript", "Java", "C#"],
                     index=0,
                     key="integrated_language"
                 )
                 
                 # Framework selection
                 framework_options = {
-                    "Python": ["pytest", "unittest", "robot"],
-                    "JavaScript": ["jest", "mocha", "cypress"],
-                    "Java": ["JUnit", "TestNG", "Cucumber"],
-                    "C#": ["NUnit", "xUnit", "MSTest"],
+                    "Python": ["pytest", "unittest", "robot", "playwright"],
+                    "JavaScript": ["jest", "mocha", "cypress", "playwright"],
+                    "TypeScript": ["jest", "mocha", "cypress", "playwright", "webdriverio"],
+                    "Java": ["JUnit", "TestNG", "Cucumber", "playwright", "Selenide"],
+                    "C#": ["NUnit", "xUnit", "MSTest", "playwright"],
                 }
                 
                 framework = st.selectbox(

@@ -151,14 +151,15 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
             index=0,
         )
     with col_b:
-        lang_options = ["Python", "Java", "JavaScript", "C#"]
+        lang_options = ["Python", "Java", "JavaScript", "TypeScript", "C#"]
         target_lang = st.selectbox("Script Language", options=lang_options, index=0)
     with col_c:
         framework_map = {
-            "Python": ["pytest", "unittest", "robot"],
-            "Java": ["junit", "testng", "cucumber"],
-            "JavaScript": ["jest", "mocha", "cypress"],
-            "C#": ["nunit", "xunit", "mstest"]
+            "Python": ["pytest", "unittest", "robot", "playwright"],
+            "Java": ["junit", "testng", "cucumber", "playwright", "selenide"],
+            "JavaScript": ["jest", "mocha", "cypress", "playwright"],
+            "TypeScript": ["jest", "mocha", "cypress", "playwright", "webdriverio"],
+            "C#": ["nunit", "xunit", "mstest", "playwright"]
         }
         target_framework = st.selectbox("Script Framework", options=framework_map[target_lang], index=0)
 
