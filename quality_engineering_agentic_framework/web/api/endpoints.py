@@ -163,7 +163,14 @@ async def generate_test_scripts(request: TestScriptGenerationRequest):
     
     except Exception as e:
         logger.error(f"Error generating test scripts: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Full traceback:")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "type": type(e).__name__
+            }
+        )
 
 
 @app.post("/api/test-data-generation", response_model=TestDataGenerationResponse)
