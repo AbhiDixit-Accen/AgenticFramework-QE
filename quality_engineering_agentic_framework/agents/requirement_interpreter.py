@@ -262,6 +262,83 @@ class TestCaseGenerationAgent(AgentInterface):
             logger.error(f"Error generating test cases: {str(e)}")
             raise
     
+    async def refine(self, current_test_cases: List[Dict[str, Any]], feedback: str) -> Dict[str, Any]:
+        """
+        Refine existing test cases based on user feedback.
+        """
+        logger.info("Refining test cases based on feedback")
+        
+        # 1. Synthesize Product/System Context using RAG (same as process)
+        product_context = "No specific project documentation found."
+        try:
+            documents = load_documents()
+            if documents:
+                chunks = split_documents(documents)
+                api_key = self.llm.config.get('api_key')
+                vector_db = create_vector_db(chunks, openai_api_key=api_key)
+                product_context = synthesize_requirements_for_query(
+                    vector_db, query=feedback, openai_api_key=api_key, model=self.llm.config.get('model'), top_k=5
+                )
+        except Exception as e:
+            logger.error(f"RAG refinement failed: {e}")
+
+        # 2. Prepare refinement prompt
+        prompt = f"""
+        ### PROJECT SOURCE OF TRUTH
+        {product_context}
+        
+        ### CURRENT TEST CASES
+        {json.dumps(current_test_cases, indent=2)}
+        
+        ### USER FEEDBACK/UPDATE REQUEST
+        "{feedback}"
+        
+        ### INSTRUCTION
+        Update the CURRENT TEST CASES based on the USER FEEDBACK. 
+        - You can add new test cases, modify existing ones, or remove them if requested.
+        - Ensure the output still follows the structured format.
+        - Use the Project Source of Truth for any missing details.
+        """
+        
+        json_schema = {
+            "type": "object",
+            "properties": {
+                "test_cases": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "description": {"type": "string"},
+                            "preconditions": {"type": "array", "items": {"type": "string"}},
+                            "actions": {"type": "array", "items": {"type": "string"}},
+                            "expected_results": {"type": "array", "items": {"type": "string"}},
+                            "test_data": {"type": "object"},
+                            "rag_ref": {"type": "string"}
+                        },
+                        "required": ["title", "preconditions", "actions", "expected_results", "rag_ref"]
+                    }
+                }
+            },
+            "required": ["test_cases"]
+        }
+        
+        system_message = "You are a senior QA engineer. Refine and update test cases based on provided feedback while maintaining the JSON structure."
+        
+        try:
+            response = await self.llm.generate_with_json_output(
+                prompt=prompt,
+                json_schema=json_schema,
+                system_message=system_message
+            )
+            return {
+                "test_cases": response.get("test_cases", []),
+                "product_context": product_context
+            }
+        except Exception as e:
+            logger.error(f"Error refining test cases: {str(e)}")
+            raise
+
     async def chat(self, messages: List[ChatMessage]) -> Tuple[str, Optional[Dict[str, Any]]]:
         """
         Process a list of chat messages and return a response.
@@ -280,12 +357,29 @@ class TestCaseGenerationAgent(AgentInterface):
         
         user_message = latest_user_message.content
         
-        # FOR ANY USER MESSAGE, ALWAYS TREAT IT AS A TEST CASE GENERATION REQUEST
-        # This ensures the agent will always try to generate test cases
-        
-        # First check if it's a prompt request
+        # Check if it's a prompt request
         if self._is_prompt_request(user_message):
             return await self._handle_prompt_request(user_message)
+            
+        # Check if the user is asking to generate test cases
+        if any(keyword in user_message.lower() for keyword in ["generate", "create", "make", "write"]) and "test" in user_message.lower():
+            try:
+                # Use process() to generate structured test cases
+                result = await self.process(user_message)
+                
+                if isinstance(result, dict):
+                    test_cases = result.get("test_cases", [])
+                    product_context = result.get("product_context", "")
+                else:
+                    test_cases = result
+                    product_context = ""
+                
+                response = f"I've generated {len(test_cases)} test cases based on your request. You can view them in the artifacts section below."
+                return response, {"test_cases": test_cases, "product_context": product_context}
+            except Exception as e:
+                logger.error(f"Error generating test cases in chat: {e}")
+                return f"I encountered an error while trying to generate test cases: {str(e)}", None
+
         # Format the conversation for the LLM in a structured way
         formatted_messages = []
         for msg in messages[-10:]:  # Limit to last 10 messages for context

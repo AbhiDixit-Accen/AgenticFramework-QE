@@ -142,183 +142,109 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
     if "chat_session_id" not in st.session_state:
         st.session_state.chat_session_id = str(uuid.uuid4())
     
-    # Agent selection
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
+    # Prominent Agent and Script configuration
+    col_a, col_b, col_c = st.columns([2, 1, 1])
+    with col_a:
         agent_type = st.selectbox(
-            "Select Agent to Chat With",
-            options=["Test Case Generation Agent", "Test Script Generation Agent", "Test Data Generation Agent"],
+            "Active Agent",
+            options=["Universal QE Assistant", "Test Case Generation Agent", "Test Script Generation Agent", "Test Data Generation Agent"],
             index=0,
         )
+    with col_b:
+        lang_options = ["Python", "Java", "JavaScript", "C#"]
+        target_lang = st.selectbox("Script Language", options=lang_options, index=0)
+    with col_c:
+        framework_map = {
+            "Python": ["pytest", "unittest", "robot"],
+            "Java": ["junit", "testng", "cucumber"],
+            "JavaScript": ["jest", "mocha", "cypress"],
+            "C#": ["nunit", "xunit", "mstest"]
+        }
+        target_framework = st.selectbox("Script Framework", options=framework_map[target_lang], index=0)
+
+    if st.button("🗑️ Clear Chat History", use_container_width=True):
+        st.session_state.chat_messages = []
+        st.rerun()
     
-    with col2:
-        if st.button("Clear Chat History"):
-            st.session_state.chat_messages = []
-    
-    # Display chat history
-    for msg in st.session_state.chat_messages:
-        with st.chat_message(msg["role"]):
-            st.write(msg["content"])
-            
-            # Display artifacts if any
-            if "artifacts" in msg and msg["artifacts"]:
-                if msg["artifacts"]["type"] == "test_cases" and "test_cases" in msg["artifacts"]:
-                    test_cases = msg["artifacts"]["test_cases"]
-                    # Display product context if available in artifacts
-                    if "product_context" in msg["artifacts"] and msg["artifacts"]["product_context"]:
-                        with st.expander("🔍 View Synthesized Product Knowledge (RAG)"):
-                            st.markdown(msg["artifacts"]["product_context"])
-                            
-                    with st.expander("View Test Cases"):
-                        for i, tc in enumerate(test_cases, 1):
-                            with st.expander(f"Test Case {i}: {tc.get('title', 'Untitled')}"):
-                                if tc.get('description'):
-                                    st.write(f"**Description:** {tc['description']}")
+    # Display chat history in a scrollable container
+    chat_container = st.container(height=500, border=True)
+    with chat_container:
+        for msg in st.session_state.chat_messages:
+            with st.chat_message(msg["role"]):
+                st.write(msg["content"])
+                
+                # Display artifacts if any
+                if "artifacts" in msg and msg["artifacts"]:
+                    # Handle Test Cases
+                    if msg["artifacts"].get("type") == "test_cases" and "test_cases" in msg["artifacts"]:
+                        test_cases = msg["artifacts"]["test_cases"]
+                        if msg["artifacts"].get("product_context"):
+                            with st.expander("🔍 Synthesized Product Knowledge"):
+                                st.markdown(msg["artifacts"]["product_context"])
                                 
-                                if tc.get('preconditions'):
-                                    st.write("**Preconditions:**")
-                                    for precond in tc['preconditions']:
-                                        st.write(f"• {precond}")
-                                
-                                if tc.get('actions'):
-                                    st.write("**Actions:**")
-                                    for action in tc['actions']:
-                                        st.write(f"• {action}")
-                                
-                                if tc.get('expected_results'):
-                                    for result in tc['expected_results']:
-                                        st.write(f"• {result}")
-                                
-                                if tc.get('rag_ref'):
-                                    st.info(f"💡 **RAG Reference:** {tc['rag_ref']}")
-                        
-                        # Download button
-                        json_str = json.dumps(test_cases, indent=2)
-                        st.download_button(
-                            label="Download Test Cases (JSON)",
-                            data=json_str,
-                            file_name="test_cases.json",
-                            mime="application/json",
-                        )
-    
-    # Chat input
-    user_input = st.chat_input("Type your message here...")
-    
-    if user_input:
-        # Add user message to chat history
-        st.session_state.chat_messages.append({"role": "user", "content": user_input})
-        
-        # Display user message
-        with st.chat_message("user"):
-            st.write(user_input)
-        
-        # Get response from agent
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                # FINAL FIX: Direct test case generation for Test Case Generation Agent
-                # This is a completely separate implementation that bypasses the API
-                try:
-                    if agent_type == "Test Case Generation Agent":
-                        # Configure LLM
-                        llm_config = {
-                            "provider": llm_provider,
-                            "model": llm_model,
-                            "api_key": llm_api_key,
-                            "temperature": float(llm_temperature),
-                            "max_tokens": int(llm_max_tokens),
-                        }
-                        
-                        # Generate test cases directly
-                        response_data = fallback_generate_test_cases(user_input, llm_config, API_URL)
-                        
-                        # Extract data from response
-                        if isinstance(response_data, dict):
-                            test_cases = response_data.get("test_cases", [])
-                            product_context = response_data.get("product_context", "")
-                        else:
-                            test_cases = response_data
-                            product_context = ""
-                        
-                        # Create an assistant response
-                        assistant_response = f"I'd be happy to generate test cases for you. Could you please provide more specific software requirements you'd like me to work with?"
-                        
-                        if test_cases and len(test_cases) > 0:
-                            # Create a better response
-                            assistant_response = f"I've generated {len(test_cases)} test cases based on your requirements. Here's a summary:\n\n"
-                            
-                            # Add a summary of test cases to the response
-                            for i, tc in enumerate(test_cases[:3], 1):
-                                assistant_response += f"{i}. {tc['title']}\n"
-                            
-                            if len(test_cases) > 3:
-                                assistant_response += f"... and {len(test_cases) - 3} more test cases.\n"
-                        
-                        # Display response
-                        st.write(assistant_response)
-                        
-                        # Display test cases in structured format
-                        with st.expander("View Generated Test Cases"):
+                        with st.expander("View Test Cases", expanded=False):
                             for i, tc in enumerate(test_cases, 1):
                                 with st.expander(f"Test Case {i}: {tc.get('title', 'Untitled')}"):
-                                    if tc.get('description'):
-                                        st.write(f"**Description:** {tc['description']}")
-                                    
+                                    st.write(f"**Description:** {tc.get('description', 'N/A')}")
                                     if tc.get('preconditions'):
                                         st.write("**Preconditions:**")
-                                        for precond in tc['preconditions']:
-                                            st.write(f"• {precond}")
-                                    
+                                        for pre in tc['preconditions']: st.write(f"- {pre}")
                                     if tc.get('actions'):
-                                        st.write("**Actions:**")
-                                        for action in tc['actions']:
-                                            st.write(f"• {action}")
-                                    
+                                        st.write("**Steps:**")
+                                        for step in tc['actions']: st.write(f"- {step}")
                                     if tc.get('expected_results'):
-                                        st.write("**Expected Results:**")
-                                        for result in tc['expected_results']:
-                                            st.write(f"• {result}")
+                                        st.write("**Expected:**")
+                                        for res in tc['expected_results']: st.write(f"- {res}")
                             
-                            # Download button for test cases
-                            json_str = json.dumps(test_cases, indent=2)
                             st.download_button(
-                                label="Download Test Cases (JSON)",
-                                data=json_str,
+                                label="Download JSON",
+                                data=json.dumps(test_cases, indent=2),
                                 file_name="test_cases.json",
                                 mime="application/json",
+                                key=f"dl_tc_{uuid.uuid4()}"
                             )
-                        
-                        # Add to chat history with artifacts
-                        assistant_message = {
-                            "role": "assistant",
-                            "content": assistant_response,
-                            "timestamp": datetime.now().isoformat(),
-                            "artifacts": {
-                                "type": "test_cases",
-                                "test_cases": test_cases,
-                                "product_context": product_context
-                            }
-                        }
-                        st.session_state.chat_messages.append(assistant_message)
                     
-                    else:
-                        # Fallback to API for other agents
+                    # Handle Test Scripts
+                    elif msg["artifacts"].get("type") == "test_scripts" and "test_scripts" in msg["artifacts"]:
+                        scripts = msg["artifacts"]["test_scripts"]
+                        with st.expander("📂 View Generated Scripts", expanded=True):
+                            for filename, code in scripts.items():
+                                st.markdown(f"**`{filename}`**")
+                                st.code(code, language=filename.split('.')[-1])
+                            
+                            full_code = "\n\n".join([f"# {f}\n{c}" for f, c in scripts.items()])
+                            st.download_button(
+                                label="Download All Scripts",
+                                data=full_code,
+                                file_name="automation_scripts.txt",
+                                key=f"dl_script_{uuid.uuid4()}"
+                            )
+
+    # Chat input
+    user_input = st.chat_input("Ask me to generate, refine, or automate tests...")
+    
+    if user_input:
+        st.session_state.chat_messages.append({"role": "user", "content": user_input})
+        with chat_container:
+            with st.chat_message("user"):
+                st.write(user_input)
+        
+        with chat_container:
+            with st.chat_message("assistant"):
+                with st.spinner("Processing..."):
+                    try:
                         agent_type_map = {
+                            "Universal QE Assistant": "universal",
                             "Test Case Generation Agent": "test_case",
                             "Test Script Generation Agent": "test_script", 
                             "Test Data Generation Agent": "test_data"
                         }
                         
-                        api_messages = []
-                        for msg in st.session_state.chat_messages:
-                            api_messages.append({
-                                "role": msg["role"],
-                                "content": msg["content"],
-                                "timestamp": datetime.now().isoformat() if "timestamp" not in msg else msg.get("timestamp", datetime.now().isoformat())
-                            })
-                        
                         request_data = {
-                            "messages": api_messages,
+                            "messages": [
+                                {"role": m["role"], "content": m["content"]} 
+                                for m in st.session_state.chat_messages
+                            ],
                             "llm_config": {
                                 "provider": llm_provider,
                                 "model": llm_model,
@@ -327,28 +253,31 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
                                 "max_tokens": int(llm_max_tokens),
                             },
                             "agent_type": agent_type_map[agent_type],
-                            "session_id": st.session_state.chat_session_id
+                            "session_id": st.session_state.chat_session_id,
+                            "test_cases": st.session_state.get("chat_test_cases", []),
+                            "agent_config": {
+                                "language": target_lang,
+                                "framework": target_framework
+                            }
                         }
                         
                         response = requests.post(f"{API_URL}/api/chat", json=request_data)
                         
                         if response.status_code == 200:
-                            response_data = response.json()
-                            assistant_response = response_data["message"]["content"]
-                            st.write(assistant_response)
+                            data = response.json()
+                            content = data["message"]["content"]
+                            st.write(content)
                             
-                            assistant_message = {
-                                "role": "assistant",
-                                "content": assistant_response,
-                                "timestamp": datetime.now().isoformat()
-                            }
+                            msg = {"role": "assistant", "content": content}
+                            if "artifacts" in data and data["artifacts"]:
+                                msg["artifacts"] = data["artifacts"]
+                                # Update chat-specific test cases
+                                if data["artifacts"].get("type") == "test_cases":
+                                    st.session_state.chat_test_cases = data["artifacts"]["test_cases"]
                             
-                            if "artifacts" in response_data and response_data["artifacts"]:
-                                assistant_message["artifacts"] = response_data["artifacts"]
-                            
-                            st.session_state.chat_messages.append(assistant_message)
+                            st.session_state.chat_messages.append(msg)
+                            st.rerun()
                         else:
-                            st.error(f"Error: {response.status_code} - {response.text}")
-                
-                except Exception as e:
-                    st.error(f"Error: {str(e)}")
+                            st.error(f"Error: {response.text}")
+                    except Exception as e:
+                        st.error(f"Connection Error: {str(e)}")

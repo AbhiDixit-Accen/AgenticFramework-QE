@@ -122,6 +122,8 @@ class ChatRequest(BaseModel):
     llm_config: LLMConfig
     agent_type: str = Field(..., description="Type of agent to chat with (test_case, test_script, test_data)")
     session_id: Optional[str] = Field(None, description="Session ID for conversation tracking")
+    test_cases: Optional[List[TestCase]] = Field(None, description="Available test cases for context")
+    agent_config: Optional[AgentConfig] = None
 
 
 class ChatArtifact(BaseModel):

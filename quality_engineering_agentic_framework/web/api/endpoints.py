@@ -30,6 +30,7 @@ from quality_engineering_agentic_framework.agents.requirement_interpreter import
 from quality_engineering_agentic_framework.agents.test_script_generator import TestScriptGenerator
 from quality_engineering_agentic_framework.agents.test_data_generator import TestDataGenerator
 from quality_engineering_agentic_framework.agents.api_test_case_creation import APITestCaseCreationAgent
+from quality_engineering_agentic_framework.agents.chatbot_agent import ChatbotAgent
 from quality_engineering_agentic_framework.web.api.models import APITestCaseGenerationRequest, APITestCaseGenerationResponse
 from quality_engineering_agentic_framework.utils.logger import get_logger, setup_logging
 
@@ -294,7 +295,7 @@ async def get_prompt_templates():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("prompt-templates")
+@app.post("/prompt-templates")
 async def save_prompt_template(template: PromptTemplate):
     """Save a prompt template."""
     try:
@@ -334,7 +335,7 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("chat", response_model=ChatResponse)
+@app.post("/api/chat", response_model=ChatResponse)
 async def chat_with_agent(request: ChatRequest, session_id: str = Query(None)):
     """Chat with an agent."""
     try:
@@ -363,14 +364,18 @@ async def chat_with_agent(request: ChatRequest, session_id: str = Query(None)):
                 agent = TestScriptGenerator(llm, {})
             elif request.agent_type == "test_data":
                 agent = TestDataGenerator(llm, {})
+            elif request.agent_type == "universal":
+                agent = ChatbotAgent(llm, request.llm_config.model_dump())
             else:
                 raise HTTPException(status_code=400, detail=f"Unknown agent type: {request.agent_type}")
             
             # Store the agent in the session
             agent_sessions[agent_key] = agent
         
-        # Process the chat request
-        response_content, artifacts = await agent.chat(request.messages)
+        # Process the chat message
+        context_test_cases = [tc.model_dump() for tc in request.test_cases] if request.test_cases else None
+        agent_config = request.agent_config.model_dump() if request.agent_config else None
+        response_content, artifacts = await agent.chat(request.messages, test_cases=context_test_cases, agent_config=agent_config)
         
         # Create the response
         chat_response = ChatResponse(
@@ -385,6 +390,17 @@ async def chat_with_agent(request: ChatRequest, session_id: str = Query(None)):
                 chat_response.artifacts = TestScriptArtifact(test_scripts=artifacts["test_scripts"])
             elif request.agent_type == "test_data" and "test_data" in artifacts:
                 chat_response.artifacts = TestDataArtifact(test_data=artifacts["test_data"])
+            elif request.agent_type == "universal":
+                # ChatbotAgent might return multiple types of artifacts
+                if "test_cases" in artifacts:
+                    chat_response.artifacts = TestCaseArtifact(
+                        test_cases=artifacts["test_cases"],
+                        product_context=artifacts.get("product_context")
+                    )
+                elif "test_scripts" in artifacts:
+                    chat_response.artifacts = TestScriptArtifact(test_scripts=artifacts["test_scripts"])
+                elif "test_data" in artifacts:
+                    chat_response.artifacts = TestDataArtifact(test_data=artifacts["test_data"])
         
         return chat_response
     
