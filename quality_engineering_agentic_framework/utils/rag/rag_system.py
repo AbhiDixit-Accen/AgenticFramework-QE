@@ -62,9 +62,14 @@ def load_documents():
                     print(f"[RAG] Warning: Skipping PDF file {file} - pypdf not available: {e}")
                     continue
 
-            elif file.endswith(".docx"):
                 documents.extend(
                     Docx2txtLoader(file_path).load()
+                )
+
+            elif file.endswith(".py"):
+                # Load python scripts as text
+                documents.extend(
+                    TextLoader(file_path).load()
                 )
         except Exception as e:
             print(f"[RAG] Warning: Failed to load {file}: {e}")

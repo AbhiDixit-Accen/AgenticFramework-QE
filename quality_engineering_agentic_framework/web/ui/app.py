@@ -1319,90 +1319,147 @@ def main():
 
     # Chat Bot Tab
     with tabs[TAB_CHAT_BOT]:
-        st.header("Chat Bot")
-        st.write("Have a conversation with our simple AI assistant")
+        col_header, col_clear = st.columns([4, 1])
+        with col_header:
+            st.header("🤖 Testing Assistant")
+        with col_clear:
+            if st.button("🗑️ Clear Chat"):
+                st.session_state.chat_history = []
+                st.rerun()
         
-        # Initialize chat history if not already present
+        # Initialize chat history
         if "chat_history" not in st.session_state:
             st.session_state.chat_history = []
         
-        # Display chat history
-        for message in st.session_state.chat_history:
-            with st.chat_message(message["role"]):
-                st.write(message["content"])
+        # Scrollable container for chat history
+        # Using a fixed height to make it scrollable within the screen
+        chat_container = st.container(height=500)
         
-        # Chat input area
-        user_input = st.chat_input("Type your message here...", key="chat_input")
+        # Display chat in the container
+        with chat_container:
+            if not st.session_state.chat_history:
+                st.info("👋 Hi! I'm your testing assistant. Ask me anything about your test cases or requirements.")
+                
+            # Define avatar paths
+            user_avatar = "quality_engineering_agentic_framework/web/ui/assets/user_icon.jpg" # Fallback to emoji if file issues
+            bot_avatar = "quality_engineering_agentic_framework/web/ui/assets/bot_icon.png"
+            
+            # Verify paths relative to execution content, usually Streamlit runs from root or app dir
+            # If running from root:
+            if not os.path.exists(user_avatar):
+                # Try relative to app.py
+                user_avatar = "assets/user_icon.jpg"
+                bot_avatar = "assets/bot_icon.png"
+            
+            for msg in st.session_state.chat_history:
+                # Standard alignment: User (Right), Bot (Left)
+                role = msg["role"]
+                avatar = user_avatar if role == "user" else bot_avatar
+                
+                with st.chat_message(role, avatar=avatar):
+                    st.markdown(msg["content"])
+                    if msg.get("context"):
+                        with st.expander("📚 Retrieved Context"):
+                            st.markdown(msg["context"])
         
-        # Process message when user sends input
+        # Chat input
+        user_input = st.chat_input("Ask me anything...", key="chat_input")
+        
         if user_input:
-            # Add user message to chat history
             st.session_state.chat_history.append({"role": "user", "content": user_input})
             
-            with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
+            # Display user message immediately (Standard: Right)
+            with chat_container:
+                with st.chat_message("user", avatar=user_avatar):
+                    st.markdown(user_input)
+                
+                with st.chat_message("assistant", avatar=bot_avatar):
+                    # Container for status updates
+                    status_placeholder = st.empty()
+                    response_placeholder = st.empty()
+                    
                     try:
-                        # Check if this is a test case generation request
-                        if "generate test case" in user_input.lower() or "create test case" in user_input.lower() or "test case" in user_input.lower():
-                            # Generate test cases using the extract_fields_from_test_cases function
-                            test_cases = extract_fields_from_test_cases(user_input)
-                            
-                            # Store test cases in session state for use in the Test Case Generation tab
-                            st.session_state.test_cases = test_cases
-                            
-                            # Create a response with the generated test cases
-                            bot_response = f"I've generated {len(test_cases)} test cases based on your requirements. Here's a summary:\n\n"
-                            for i, tc in enumerate(test_cases, 1):
-                                bot_response += f"{i}. {tc.get('name', 'Unnamed Test Case')}\n"
-                            
-                            # Add a note about where to find the full test cases
-                            bot_response += "\nYou can view and download the full test cases in the 'Test Case Generation' tab."
-                            
-                        else:
-                            # Prepare request data for regular chat
-                            request_data = {
-                                "message": user_input,
-                                "history": [msg for msg in st.session_state.chat_history if msg["role"] != "user"],
-                                "llm_config": {
-                                    "provider": llm_provider,
-                                    "model": llm_model,
-                                    "api_key": llm_api_key,
-                                    "temperature": float(llm_temperature),
-                                    "max_tokens": int(llm_max_tokens),
-                                },
-                                "system_prompt": "You are a helpful assistant who provides clear and concise responses.",
-                                "chat_model": "Basic"
-                            }
-                            
-                            # Make the API request
-                            response = requests.post(
-                                f"{API_URL}/api/chat",
-                                json=request_data,
-                                timeout=10  # 10 seconds timeout
-                            )
-                            
-                            if response.status_code == 200:
-                                response_data = response.json()
-                                bot_response = response_data.get("response", "I don't have a response for that.")
-                            else:
-                                # Fall back to a generic response if the API fails
-                                bot_response = "I'm having trouble connecting to the chat service. Please try again later."
-                        
-                        # Display the bot's response
-                        st.write(bot_response)
-                        
-                        # Add bot's response to chat history
-                        st.session_state.chat_history.append({"role": "assistant", "content": bot_response})
-                        
-                        # Rerun to update the UI
-                        st.rerun()
+                        # Detect intent
+                        user_lower = user_input.lower()
+                        intent = "general"
+                        if any(word in user_lower for word in ["explain", "what is", "what are", "describe"]): intent = "explain"
+                        elif any(word in user_lower for word in ["suggest", "improve", "better"]): intent = "suggest"
+                        elif any(word in user_lower for word in ["generate", "create", "make", "write"] and "test" in user_lower): intent = "generate"
+                        elif any(word in user_lower for word in ["script", "code", "automate", "python", "java", "selenium", "playwright"]): intent = "script"
                         
                     except Exception as e:
-                        # Handle any unexpected errors
-                        error_msg = f"Error processing your request: {str(e)}"
-                        logger.error(error_msg)
-                        st.error(error_msg)
-                        st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
+                        print(f"RAG failed: {e}")
+                        rag_context = ""
+
+                    # Generation
+                    
+                    # Validate API key
+                    safe_api_key = llm_api_key
+                    if not isinstance(safe_api_key, str) and safe_api_key is not None:
+                         # ... (validation logic preserved or handled in agent?)
+                         # For now, let's trust the agent or validation before agent creation
+                        try:
+                            safe_api_key = str(safe_api_key)
+                            if "<coroutine" in safe_api_key:
+                                if f"{llm_provider}_api_key" in st.session_state:
+                                    val = st.session_state[f"{llm_provider}_api_key"]
+                                    if isinstance(val, str): safe_api_key = val
+                        except: safe_api_key = "demo"
+
+                    # Initialize Agent
+                    from quality_engineering_agentic_framework.agents.chatbot_agent import ChatbotAgent
+                    
+                    llm_config = {
+                        "provider": llm_provider, 
+                        "model": llm_model, 
+                        "api_key": safe_api_key, 
+                        "temperature": 0.7, 
+                        "max_tokens": llm_max_tokens
+                    }
+                    
+                    try:
+                        agent = ChatbotAgent(llm_config)
+                        test_cases = st.session_state.get('test_cases', [])
+                        
+                        # Wrapper to run async agent process
+                        def run_async(coro):
+                            try:
+                                loop = asyncio.get_event_loop()
+                                if loop.is_running(): return loop.run_until_complete(coro)
+                                else: return asyncio.run(coro)
+                            except RuntimeError: return asyncio.run(coro)
+
+                        with st.spinner("Thinking..."):
+                            result = run_async(agent.process_request(user_input, test_cases, st.session_state.chat_history))
+                        
+                        bot_response = result["response"]
+                        rag_context = result["rag_context"]
+                        
+                        # Update state if new test cases generated
+                        if result.get("new_test_cases"):
+                            st.session_state.test_cases = result["new_test_cases"]
+                        
+                        # Clear status
+                        status_placeholder.empty()
+                        
+                        # SIMULATED STREAMING
+                        import time
+                        def stream_text():
+                            for word in bot_response.split(" "):
+                                yield word + " "
+                                time.sleep(0.02)
+                        
+                        st.write_stream(stream_text)
+                        
+                        # Save to history
+                        msg = {"role": "assistant", "content": bot_response}
+                        if rag_context: msg["context"] = rag_context
+                        st.session_state.chat_history.append(msg)
+                        
+                    except Exception as e:
+                        bot_message = f"⚠️ **Agent Error**: {str(e)}"
+                        st.error(bot_message)
+                        st.session_state.chat_history.append({"role": "assistant", "content": bot_message})
 
 def load_prompt_template(template_name: str) -> Optional[str]:
     """Load a prompt template from the API."""

@@ -150,7 +150,7 @@ async def generate_test_scripts(request: TestScriptGenerationRequest):
         llm = LLMFactory.create_llm(llm_config)
         
         # Initialize agent
-        agent_config = request.agent_config.dict() if request.agent_config else {}
+        agent_config = request.agent_config.model_dump() if request.agent_config else {}
         agent = TestScriptGenerator(llm, agent_config)
         
         # Convert test cases to dictionaries for processing
@@ -163,7 +163,14 @@ async def generate_test_scripts(request: TestScriptGenerationRequest):
     
     except Exception as e:
         logger.error(f"Error generating test scripts: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Full traceback:")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "type": type(e).__name__
+            }
+        )
 
 
 @app.post("/api/test-data-generation", response_model=TestDataGenerationResponse)
@@ -340,7 +347,7 @@ async def chat_with_agent(request: ChatRequest, session_id: str = Query(None)):
             session_id = str(uuid.uuid4())
         
         # Create LLM
-        llm_config = request.llm_config.dict()
+        llm_config = request.llm_config.model_dump()
         llm = LLMFactory.create_llm(llm_config)
         
         # Get or create agent
