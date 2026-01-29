@@ -220,6 +220,20 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
                                 file_name="automation_scripts.txt",
                                 key=f"dl_script_{uuid.uuid4()}"
                             )
+                    
+                    # Handle Test Data
+                    elif msg["artifacts"].get("type") == "test_data" and "test_data" in msg["artifacts"]:
+                        test_data = msg["artifacts"]["test_data"]
+                        with st.expander("📊 View Generated Test Data", expanded=True):
+                            st.json(test_data)
+                            
+                            st.download_button(
+                                label="Download Test Data (JSON)",
+                                data=json.dumps(test_data, indent=2),
+                                file_name="test_data.json",
+                                mime="application/json",
+                                key=f"dl_data_{uuid.uuid4()}"
+                            )
 
     # Chat input
     user_input = st.chat_input("Ask me to generate, refine, or automate tests...")

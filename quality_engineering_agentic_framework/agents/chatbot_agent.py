@@ -9,6 +9,7 @@ from quality_engineering_agentic_framework.utils.rag.rag_system import (
 )
 from quality_engineering_agentic_framework.agents.requirement_interpreter import TestCaseGenerationAgent
 from quality_engineering_agentic_framework.agents.test_script_generator import TestScriptGenerator
+from quality_engineering_agentic_framework.agents.test_data_generator import TestDataGenerator
 from quality_engineering_agentic_framework.agents.agent_interface import AgentInterface
 from quality_engineering_agentic_framework.web.api.models import ChatMessage
 
@@ -36,6 +37,12 @@ class ChatbotAgent(AgentInterface):
         except Exception as e:
             print(f"Warning: Could not initialize TestScriptGenerator: {e}")
             self.script_generator = None
+
+        try:
+            self.data_generator = TestDataGenerator(self.llm, {})
+        except Exception as e:
+            print(f"Warning: Could not initialize TestDataGenerator: {e}")
+            self.data_generator = None
         
         self.role_and_goals = """You are a Smart Test Engineer Assistant.
 
@@ -92,6 +99,9 @@ PRIMARY GOALS:
         if result.get("new_test_scripts"):
             artifacts["test_scripts"] = result["new_test_scripts"]
             
+        if result.get("new_test_data"):
+            artifacts["test_data"] = result["new_test_data"]
+
         if result.get("rag_context"):
             artifacts["product_context"] = result["rag_context"]
         
@@ -206,6 +216,27 @@ PRIMARY GOALS:
                 print(f"TestScriptGenerator failed: {e}")
                 response_text = f"⚠️ Error generating script: {str(e)}"
                 return {"response": response_text, "intent": intent, "rag_context": rag_context, "new_test_cases": None}
+
+        # Use specialized agent for test data generation if available
+        if intent == "data" and self.data_generator:
+            try:
+                # Decide what to use as input data (test cases are best)
+                input_data = test_cases if test_cases else user_input
+                
+                data_result = await self.data_generator.process(input_data)
+                if data_result:
+                    response_text = f"✅ I've generated synthetic test data variations based on the test cases. You can view them in the artifacts section below."
+                    return {
+                        "response": response_text,
+                        "intent": intent,
+                        "rag_context": rag_context,
+                        "new_test_cases": None,
+                        "new_test_data": data_result
+                    }
+            except Exception as e:
+                print(f"TestDataGenerator failed: {e}")
+                response_text = f"⚠️ Error generating test data: {str(e)}"
+                return {"response": response_text, "intent": intent, "rag_context": rag_context, "new_test_cases": None}
         
         # Default LLM generation if specialized agents fail or intent is different
         response_text = await self.llm.generate(prompt)
@@ -233,19 +264,24 @@ PRIMARY GOALS:
         if any(word in user_lower for word in ["script", "code", "automate", "automation"]):
             return "script"
             
-        # 2. Refinement (if test cases exist and user is asking for changes)
+        # 2. Test Data Generation
+        if any(word in user_lower for word in ["data", "synthetic", "variation", "values", "inputs"]):
+            if any(word in user_lower for word in ["generate", "create", "make", "test", "provide", "get"]):
+                return "data"
+            
+        # 3. Refinement (if test cases exist and user is asking for changes)
         if test_cases and any(word in user_lower for word in ["add", "remove", "delete", "update", "change", "modify", "instead", "refine", "step"]):
             return "refine"
             
-        # 3. Test Case Generation
+        # 4. Test Case Generation
         if any(word in user_lower for word in ["generate", "create", "make", "write"]) and "test" in user_lower:
             return "generate"
             
-        # 4. Explanation
+        # 5. Explanation
         if any(word in user_lower for word in ["explain", "what is", "what are", "describe"]):
             return "explain"
             
-        # 5. Suggestions
+        # 6. Suggestions
         if any(word in user_lower for word in ["suggest", "improve", "better"]):
             return "suggest"
             
