@@ -1410,12 +1410,9 @@ def save_prompt_template(template_name: str, content: str) -> bool:
 
 
 if __name__ == "__main__":
-    # Install uvloop for better async performance if available
-    try:
-        import uvloop  # type: ignore
-        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    except ImportError:
-        pass  # uvloop not available, use default asyncio
+    # Ensure we use the standard asyncio event loop policy, not uvloop
+    # as nest_asyncio does not support patching uvloop
+    asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
     
     # Create an event loop and run the async code
     loop = asyncio.new_event_loop()
