@@ -243,36 +243,33 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
         with chat_container:
             with st.chat_message("user"):
                 st.write(user_input)
-        
-        with chat_container:
+                
             with st.chat_message("assistant"):
                 with st.spinner("Processing..."):
                     try:
                         agent_type_map = {
                             "Universal QE Assistant": "universal",
                             "Test Case Generation Agent": "test_case",
-                            "Test Script Generation Agent": "test_script", 
+                            "Test Script Generation Agent": "test_script",
                             "Test Data Generation Agent": "test_data"
                         }
                         
+                        # Prepare the request
                         request_data = {
-                            "messages": [
-                                {"role": m["role"], "content": m["content"]} 
-                                for m in st.session_state.chat_messages
-                            ],
+                            "messages": [{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_messages],
+                            "agent_type": agent_type_map[agent_type],
+                            "session_id": st.session_state.chat_session_id,
+                            "test_cases": st.session_state.get("chat_test_cases", []),
+                            "agent_config": {
+                                "language": target_lang,
+                                "framework": target_framework,
+                            },
                             "llm_config": {
                                 "provider": llm_provider,
                                 "model": llm_model,
                                 "api_key": llm_api_key,
                                 "temperature": float(llm_temperature),
                                 "max_tokens": int(llm_max_tokens),
-                            },
-                            "agent_type": agent_type_map[agent_type],
-                            "session_id": st.session_state.chat_session_id,
-                            "test_cases": st.session_state.get("chat_test_cases", []),
-                            "agent_config": {
-                                "language": target_lang,
-                                "framework": target_framework
                             }
                         }
                         
@@ -286,13 +283,12 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
                             msg = {"role": "assistant", "content": content}
                             if "artifacts" in data and data["artifacts"]:
                                 msg["artifacts"] = data["artifacts"]
-                                # Update chat-specific test cases
                                 if data["artifacts"].get("type") == "test_cases":
                                     st.session_state.chat_test_cases = data["artifacts"]["test_cases"]
                             
                             st.session_state.chat_messages.append(msg)
                             st.rerun()
                         else:
-                            st.error(f"Error: {response.text}")
+                            st.error(f"Error: {response.status_code} - {response.text}")
                     except Exception as e:
                         st.error(f"Connection Error: {str(e)}")
