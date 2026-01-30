@@ -1412,7 +1412,7 @@ def save_prompt_template(template_name: str, content: str) -> bool:
 if __name__ == "__main__":
     # Install uvloop for better async performance if available
     try:
-        import uvloop
+        import uvloop  # type: ignore
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     except ImportError:
         pass  # uvloop not available, use default asyncio
