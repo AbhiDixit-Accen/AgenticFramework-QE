@@ -387,6 +387,10 @@ def main():
             step=100,
         )
         
+        # Display version in sidebar
+        st.divider()
+        st.markdown("### Version 1.0")
+        
         if llm_api_key:
             st.session_state[f"{llm_provider}_api_key"] = llm_api_key
         
@@ -395,7 +399,7 @@ def main():
             llm_api_key = st.session_state[f"{llm_provider}_api_key"]
     
     # Main content - tabs
-    tab_names = ["Test Case Generation", "Test Script Generation", "Test Data Generation", "Chat Bot", "API Test Case Generation"]
+    tab_names = ["Test Case Generation", "Test Script Generation", "Test Data Generation"]
     
     # Create tabs and verify count
     try:
@@ -405,16 +409,14 @@ def main():
             st.stop()
         
         # Verify tab indices are within bounds
-        if len(tabs) < 5:
-            st.error(f"Not enough tabs created. Expected 5, got {len(tabs)}.")
+        if len(tabs) < 3:
+            st.error(f"Not enough tabs created. Expected 3, got {len(tabs)}.")
             st.stop()
         
         # Define tab indices as constants for better maintainability
         TAB_TEST_CASE_GEN = 0
         TAB_TEST_SCRIPT_GEN = 1
         TAB_TEST_DATA_GEN = 2
-        TAB_CHAT_BOT = 3
-        TAB_API_TEST_CASE_GEN = 4
         
     except Exception as e:
         st.error(f"Error creating tabs: {str(e)}")
@@ -1202,177 +1204,177 @@ def main():
                         key=f"download_{dataset_name}"
                     )
     
-    # API Test Case Generation Tab
-    with tabs[TAB_API_TEST_CASE_GEN]:
-        st.header("API Test Case Generation")
-        st.write("Generate test cases for your APIs by providing the details below.")
+    # # API Test Case Generation Tab (COMMENTED OUT - NOT VISIBLE TO END USER)
+    # with tabs[TAB_API_TEST_CASE_GEN]:
+    #     st.header("API Test Case Generation")
+    #     st.write("Generate test cases for your APIs by providing the details below.")
+    #
+    #     with st.form("api_test_case_form"):
+    #         base_url = st.text_input("API Base URL", help="e.g. https://api.example.com")
+    #         endpoint = st.text_input("Endpoint Path", help="e.g. /v1/resource")
+    #         method = st.selectbox("HTTP Method", ["GET", "POST", "PUT", "DELETE", "PATCH"])
+    #         headers = st.text_area("Headers (JSON)", value="{}", help='e.g. {"Authorization": "Bearer ..."}')
+    #         params = st.text_area("Query Parameters (JSON)", value="{}", help='e.g. {"page": 1}')
+    #         body = st.text_area("Request Body (JSON)", value="{}", help='For POST/PUT/PATCH, e.g. {"name": "foo"}')
+    #         auth = st.text_area("Authentication Info (JSON)", value="{}", help='e.g. {"type": "basic", "username": "...", "password": "..."}')
+    #
+    #         submitted = st.form_submit_button("Generate API Test Cases")
+    #
+    #     if submitted:
+        #         # Validate JSON fields
+    #         def safe_json_loads(s, field):
+    #             try:
+    #                 return json.loads(s) if s.strip() else {}
+    #             except Exception as e:
+    #                 st.error(f"Invalid JSON in {field}: {e}")
+    #                 return None
+    #
+    #         headers_json = safe_json_loads(headers, "Headers")
+    #         params_json = safe_json_loads(params, "Query Parameters")
+    #         body_json = safe_json_loads(body, "Request Body")
+    #         auth_json = safe_json_loads(auth, "Authentication Info")
+    #
+    #         if None in (headers_json, params_json, body_json, auth_json):
+    #             st.stop()
+    #
+    #         if not base_url.strip() or not endpoint.strip():
+    #             st.error("Base URL and Endpoint Path are required.")
+    #             st.stop()
+    #
+    #         api_details = {
+    #             "base_url": base_url.strip(),
+    #             "endpoint": endpoint.strip(),
+    #             "method": method,
+    #             "headers": headers_json,
+    #             "params": params_json,
+    #             "body": body_json,
+    #             "auth": auth_json,
+    #         }
+    #
+    #         # Validate LLM config fields
+    #         if not all([llm_provider, llm_model, llm_api_key, llm_temperature, llm_max_tokens]):
+    #             st.error("All LLM configuration fields are required.")
+    #             st.stop()
+    #
+    #         # Prepare request for backend
+    #         request_data = {
+    #             "api_details": api_details,
+    #             "llm_config": {
+    #                 "provider": llm_provider,
+    #                 "model": llm_model,
+    #                 "api_key": llm_api_key,
+    #                 "temperature": float(llm_temperature),
+    #                 "max_tokens": int(llm_max_tokens),
+    #             },
+    #         }
+    #
+    #
+    #         with st.spinner("Generating API test cases..."):
+    #             try:
+    #                 response = requests.post(
+    #                     f"{API_URL}/api/api-test-case-generation",
+    #                     json=request_data,
+    #                     timeout=30,
+    #                 )
+    #                 response.raise_for_status()
+    #                 data = response.json()
+    #                 test_cases = data.get("test_cases", [])
+    #                 if test_cases:
+    #                     st.success(f"Generated {len(test_cases)} API test cases!")
+    #                     for i, tc in enumerate(test_cases, 1):
+    #                         with st.expander(f"{i}. {tc.get('title', 'Untitled Test Case')}"):
+    #                             st.json(tc)
+    #                 else:
+    #                     st.warning("No test cases generated.")
+    #             except Exception as e:
+    #                 st.error(f"Error generating API test cases: {e}")
 
-        with st.form("api_test_case_form"):
-            base_url = st.text_input("API Base URL", help="e.g. https://api.example.com")
-            endpoint = st.text_input("Endpoint Path", help="e.g. /v1/resource")
-            method = st.selectbox("HTTP Method", ["GET", "POST", "PUT", "DELETE", "PATCH"])
-            headers = st.text_area("Headers (JSON)", value="{}", help='e.g. {"Authorization": "Bearer ..."}')
-            params = st.text_area("Query Parameters (JSON)", value="{}", help='e.g. {"page": 1}')
-            body = st.text_area("Request Body (JSON)", value="{}", help='For POST/PUT/PATCH, e.g. {"name": "foo"}')
-            auth = st.text_area("Authentication Info (JSON)", value="{}", help='e.g. {"type": "basic", "username": "...", "password": "..."}')
-
-            submitted = st.form_submit_button("Generate API Test Cases")
-
-        if submitted:
-            # Validate JSON fields
-            def safe_json_loads(s, field):
-                try:
-                    return json.loads(s) if s.strip() else {}
-                except Exception as e:
-                    st.error(f"Invalid JSON in {field}: {e}")
-                    return None
-
-            headers_json = safe_json_loads(headers, "Headers")
-            params_json = safe_json_loads(params, "Query Parameters")
-            body_json = safe_json_loads(body, "Request Body")
-            auth_json = safe_json_loads(auth, "Authentication Info")
-
-            if None in (headers_json, params_json, body_json, auth_json):
-                st.stop()
-
-            if not base_url.strip() or not endpoint.strip():
-                st.error("Base URL and Endpoint Path are required.")
-                st.stop()
-
-            api_details = {
-                "base_url": base_url.strip(),
-                "endpoint": endpoint.strip(),
-                "method": method,
-                "headers": headers_json,
-                "params": params_json,
-                "body": body_json,
-                "auth": auth_json,
-            }
-
-            # Validate LLM config fields
-            if not all([llm_provider, llm_model, llm_api_key, llm_temperature, llm_max_tokens]):
-                st.error("All LLM configuration fields are required.")
-                st.stop()
-
-            # Prepare request for backend
-            request_data = {
-                "api_details": api_details,
-                "llm_config": {
-                    "provider": llm_provider,
-                    "model": llm_model,
-                    "api_key": llm_api_key,
-                    "temperature": float(llm_temperature),
-                    "max_tokens": int(llm_max_tokens),
-                },
-            }
-
-
-            with st.spinner("Generating API test cases..."):
-                try:
-                    response = requests.post(
-                        f"{API_URL}/api/api-test-case-generation",
-                        json=request_data,
-                        timeout=30,
-                    )
-                    response.raise_for_status()
-                    data = response.json()
-                    test_cases = data.get("test_cases", [])
-                    if test_cases:
-                        st.success(f"Generated {len(test_cases)} API test cases!")
-                        for i, tc in enumerate(test_cases, 1):
-                            with st.expander(f"{i}. {tc.get('title', 'Untitled Test Case')}"):
-                                st.json(tc)
-                    else:
-                        st.warning("No test cases generated.")
-                except Exception as e:
-                    st.error(f"Error generating API test cases: {e}")
-
-    # Chat Bot Tab
-    with tabs[TAB_CHAT_BOT]:
-        st.header("Chat Bot")
-        st.write("Have a conversation with our simple AI assistant")
-        
-        # Initialize chat history if not already present
-        if "chat_history" not in st.session_state:
-            st.session_state.chat_history = []
-        
-        # Display chat history
-        for message in st.session_state.chat_history:
-            with st.chat_message(message["role"]):
-                st.write(message["content"])
-        
-        # Chat input area
-        user_input = st.chat_input("Type your message here...", key="chat_input")
-        
-        # Process message when user sends input
-        if user_input:
-            # Add user message to chat history
-            st.session_state.chat_history.append({"role": "user", "content": user_input})
-            
-            with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
-                    try:
-                        # Check if this is a test case generation request
-                        if "generate test case" in user_input.lower() or "create test case" in user_input.lower() or "test case" in user_input.lower():
-                            # Generate test cases using the extract_fields_from_test_cases function
-                            test_cases = extract_fields_from_test_cases(user_input)
-                            
-                            # Store test cases in session state for use in the Test Case Generation tab
-                            st.session_state.test_cases = test_cases
-                            
-                            # Create a response with the generated test cases
-                            bot_response = f"I've generated {len(test_cases)} test cases based on your requirements. Here's a summary:\n\n"
-                            for i, tc in enumerate(test_cases, 1):
-                                bot_response += f"{i}. {tc.get('name', 'Unnamed Test Case')}\n"
-                            
-                            # Add a note about where to find the full test cases
-                            bot_response += "\nYou can view and download the full test cases in the 'Test Case Generation' tab."
-                            
-                        else:
-                            # Prepare request data for regular chat
-                            request_data = {
-                                "message": user_input,
-                                "history": [msg for msg in st.session_state.chat_history if msg["role"] != "user"],
-                                "llm_config": {
-                                    "provider": llm_provider,
-                                    "model": llm_model,
-                                    "api_key": llm_api_key,
-                                    "temperature": float(llm_temperature),
-                                    "max_tokens": int(llm_max_tokens),
-                                },
-                                "system_prompt": "You are a helpful assistant who provides clear and concise responses.",
-                                "chat_model": "Basic"
-                            }
-                            
-                            # Make the API request
-                            response = requests.post(
-                                f"{API_URL}/api/chat",
-                                json=request_data,
-                                timeout=10  # 10 seconds timeout
-                            )
-                            
-                            if response.status_code == 200:
-                                response_data = response.json()
-                                bot_response = response_data.get("response", "I don't have a response for that.")
-                            else:
-                                # Fall back to a generic response if the API fails
-                                bot_response = "I'm having trouble connecting to the chat service. Please try again later."
-                        
-                        # Display the bot's response
-                        st.write(bot_response)
-                        
-                        # Add bot's response to chat history
-                        st.session_state.chat_history.append({"role": "assistant", "content": bot_response})
-                        
-                        # Rerun to update the UI
-                        st.rerun()
-                        
-                    except Exception as e:
-                        # Handle any unexpected errors
-                        error_msg = f"Error processing your request: {str(e)}"
-                        logger.error(error_msg)
-                        st.error(error_msg)
-                        st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
+    # # Chat Bot Tab (COMMENTED OUT - NOT VISIBLE TO END USER)
+    # with tabs[TAB_CHAT_BOT]:
+    #     st.header("Chat Bot")
+    #     st.write("Have a conversation with our simple AI assistant")
+    #     
+    #     # Initialize chat history if not already present
+    #     if "chat_history" not in st.session_state:
+    #         st.session_state.chat_history = []
+    #     
+    #     # Display chat history
+    #     for message in st.session_state.chat_history:
+    #         with st.chat_message(message["role"]):
+    #             st.write(message["content"])
+    #     
+    #     # Chat input area
+    #     user_input = st.chat_input("Type your message here...", key="chat_input")
+    #     
+    #     # Process message when user sends input
+    #     if user_input:
+    #         # Add user message to chat history
+    #         st.session_state.chat_history.append({"role": "user", "content": user_input})
+    #         
+    #         with st.chat_message("assistant"):
+    #             with st.spinner("Thinking..."):
+    #                 try:
+    #                     # Check if this is a test case generation request
+    #                     if "generate test case" in user_input.lower() or "create test case" in user_input.lower() or "test case" in user_input.lower():
+    #                         # Generate test cases using the extract_fields_from_test_cases function
+    #                         test_cases = extract_fields_from_test_cases(user_input)
+    #                         
+    #                         # Store test cases in session state for use in the Test Case Generation tab
+    #                         st.session_state.test_cases = test_cases
+    #                         
+    #                         # Create a response with the generated test cases
+    #                         bot_response = f"I've generated {len(test_cases)} test cases based on your requirements. Here's a summary:\n\n"
+    #                         for i, tc in enumerate(test_cases, 1):
+    #                             bot_response += f"{i}. {tc.get('name', 'Unnamed Test Case')}\n"
+    #                         
+    #                         # Add a note about where to find the full test cases
+    #                         bot_response += "\nYou can view and download the full test cases in the 'Test Case Generation' tab."
+    #                         
+    #                     else:
+    #                         # Prepare request data for regular chat
+    #                         request_data = {
+    #                             "message": user_input,
+    #                             "history": [msg for msg in st.session_state.chat_history if msg["role"] != "user"],
+    #                             "llm_config": {
+    #                                 "provider": llm_provider,
+    #                                 "model": llm_model,
+    #                                 "api_key": llm_api_key,
+    #                                 "temperature": float(llm_temperature),
+    #                                 "max_tokens": int(llm_max_tokens),
+    #                             },
+    #                             "system_prompt": "You are a helpful assistant who provides clear and concise responses.",
+    #                             "chat_model": "Basic"
+    #                         }
+    #                         
+    #                         # Make the API request
+    #                         response = requests.post(
+    #                             f"{API_URL}/api/chat",
+    #                             json=request_data,
+    #                             timeout=10  # 10 seconds timeout
+    #                         )
+    #                         
+    #                         if response.status_code == 200:
+    #                             response_data = response.json()
+    #                             bot_response = response_data.get("response", "I don't have a response for that.")
+    #                         else:
+    #                             # Fall back to a generic response if the API fails
+    #                             bot_response = "I'm having trouble connecting to the chat service. Please try again later."
+    #                     
+    #                     # Display the bot's response
+    #                     st.write(bot_response)
+    #                     
+    #                     # Add bot's response to chat history
+    #                     st.session_state.chat_history.append({"role": "assistant", "content": bot_response})
+    #                     
+    #                     # Rerun to update the UI
+    #                     st.rerun()
+    #                     
+    #                 except Exception as e:
+    #                     # Handle any unexpected errors
+    #                     error_msg = f"Error processing your request: {str(e)}"
+    #                     logger.error(error_msg)
+    #                     st.error(error_msg)
+    #                     st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
 
 def load_prompt_template(template_name: str) -> Optional[str]:
     """Load a prompt template from the API."""
