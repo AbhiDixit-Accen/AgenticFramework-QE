@@ -26,9 +26,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configure the API URL
-#API_URL = "http://127.0.0.1:8080"
-#API_URL = "https://agenticframework-qe-4.onrender.com"
-API_URL = "http://16.171.147.102:8080"
+# Both frontend and backend run on the same server, so use localhost
+API_URL = "http://localhost:8080"
 
 # Initialize session state
 if 'generate_data' not in st.session_state:
@@ -203,9 +202,8 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Define API URL
-#API_URL = "http://127.0.0.1:8080"  # Using 127.0.0.1 instead of localhost for consistency
-API_URL = "https://agenticframework-qe-4.onrender.com"
+# API URL is already defined at the top of the file
+# Both services run on the same AWS instance
 
 def generate_sample_data(data_format: str, size: int, fields: List[Dict[str, str]]) -> Union[dict, str]:
     """Generate sample test data in the specified format.
