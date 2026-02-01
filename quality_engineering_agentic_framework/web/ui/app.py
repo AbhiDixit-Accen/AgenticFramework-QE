@@ -733,12 +733,10 @@ def main():
                     with col_all:
                         if st.button("✅ Select All"):
                             st.session_state.selected_documents = files.copy()
-                            clear_vector_db()
                             st.rerun()
                     with col_none:
                         if st.button("❌ Deselect All"):
                             st.session_state.selected_documents = []
-                            clear_vector_db()
                             st.rerun()
                     with col_info:
                         st.caption(f"{len(st.session_state.selected_documents)} of {len(files)} documents selected")
@@ -757,12 +755,10 @@ def main():
                             if st.checkbox(f"Select {filename}", value=is_selected, key=f"select_{filename}", label_visibility="collapsed"):
                                 if filename not in st.session_state.selected_documents:
                                     st.session_state.selected_documents.append(filename)
-                                    clear_vector_db()
                                     st.rerun()
                             else:
                                 if filename in st.session_state.selected_documents:
                                     st.session_state.selected_documents.remove(filename)
-                                    clear_vector_db()
                                     st.rerun()
                         
                         with col2:
@@ -778,7 +774,6 @@ def main():
                                     os.remove(file_path)
                                     if filename in st.session_state.selected_documents:
                                         st.session_state.selected_documents.remove(filename)
-                                    clear_vector_db()
                                     st.success(f"Deleted {filename}")
                                     st.rerun()
                                 except Exception as e:
