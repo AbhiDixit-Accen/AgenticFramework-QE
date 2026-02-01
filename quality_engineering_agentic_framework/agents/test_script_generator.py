@@ -139,16 +139,20 @@ class TestScriptGenerator(AgentInterface):
             test_cases_str += "Preconditions:\n" + "\n".join(f"- {p}" for p in tc.get("preconditions", [])) + "\n"
             test_cases_str += "Actions:\n"
             for a in tc.get("actions", []):
-                action_desc = f"- {a.get('action')}"
-                if 'locator' in a:
-                    locators = a['locator']
-                    locator_parts = [f"{k}: {v}" for k, v in locators.items()]
-                    action_desc += " | Locator: " + ", ".join(locator_parts)
+                # Handle both string actions and dict actions
+                if isinstance(a, str):
+                    action_desc = f"- {a}"
                 else:
-                    if not locators_provided and rendered_dom:
-                        action_desc += " | Locator: (to be determined from DOM)"
-                if 'value' in a:
-                    action_desc += f" | Value: {a['value']}"
+                    action_desc = f"- {a.get('action', str(a))}"
+                    if 'locator' in a:
+                        locators = a['locator']
+                        locator_parts = [f"{k}: {v}" for k, v in locators.items()]
+                        action_desc += " | Locator: " + ", ".join(locator_parts)
+                    else:
+                        if not locators_provided and rendered_dom:
+                            action_desc += " | Locator: (to be determined from DOM)"
+                    if 'value' in a:
+                        action_desc += f" | Value: {a['value']}"
                 test_cases_str += action_desc + "\n"
             test_cases_str += "Expected Results:\n" + "\n".join(f"- {r}" for r in tc.get("expected_results", [])) + "\n\n"
 

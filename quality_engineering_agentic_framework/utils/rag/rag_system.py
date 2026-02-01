@@ -121,6 +121,14 @@ def create_vector_db(chunks, openai_api_key=None):
             embedding_function=embeddings
         )
     else:
+        if REBUILD_DB and os.path.exists(DB_PATH):
+            print(f"Clearing existing vector database at {DB_PATH} for strict filtering...")
+            import shutil
+            try:
+                shutil.rmtree(DB_PATH)
+            except Exception as e:
+                print(f"Warning: Failed to clear database directory: {e}")
+                
         print("Creating new vector database...")
         db = Chroma.from_documents(
             chunks,

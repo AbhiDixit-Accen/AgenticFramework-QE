@@ -32,7 +32,7 @@ except ImportError as e:
     # We'll implement our own test case generation as a fallback
 
 # Define a fallback test case generation function that doesn't depend on imports
-def fallback_generate_test_cases(requirements_text, llm_config, api_url=None):
+def fallback_generate_test_cases(requirements_text, llm_config, api_url=None, selected_documents=None):
     """
     Fallback test case generation function that works without the main module.
     First tries to use the API, then falls back to a simple test case generator.
@@ -41,6 +41,7 @@ def fallback_generate_test_cases(requirements_text, llm_config, api_url=None):
         requirements_text (str): The requirements text to generate test cases from
         llm_config (dict): LLM configuration
         api_url (str): API URL for remote generation
+        selected_documents (list): Optional list of specific filenames for RAG
         
     Returns:
         list: List of test case dictionaries
@@ -51,7 +52,8 @@ def fallback_generate_test_cases(requirements_text, llm_config, api_url=None):
             # Try to use the test case generation API endpoint
             request_data = {
                 "requirements": requirements_text,
-                "llm_config": llm_config
+                "llm_config": llm_config,
+                "selected_documents": selected_documents
             }
             
             response = requests.post(
@@ -230,7 +232,12 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
                         }
                         
                         # Generate test cases directly
-                        response_data = fallback_generate_test_cases(user_input, llm_config, API_URL)
+                        response_data = fallback_generate_test_cases(
+                            user_input, 
+                            llm_config, 
+                            API_URL,
+                            selected_documents=st.session_state.selected_documents if 'selected_documents' in st.session_state else None
+                        )
                         
                         # Extract data from response
                         if isinstance(response_data, dict):
@@ -327,7 +334,8 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
                                 "max_tokens": int(llm_max_tokens),
                             },
                             "agent_type": agent_type_map[agent_type],
-                            "session_id": st.session_state.chat_session_id
+                            "session_id": st.session_state.chat_session_id,
+                            "selected_documents": st.session_state.selected_documents if 'selected_documents' in st.session_state else None
                         }
                         
                         response = requests.post(f"{API_URL}/api/chat", json=request_data)

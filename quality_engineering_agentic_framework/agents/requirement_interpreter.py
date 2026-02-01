@@ -90,12 +90,13 @@ class TestCaseGenerationAgent(AgentInterface):
         
         return default_template
     
-    async def process(self, input_data: str) -> List[Dict[str, Any]]:
+    async def process(self, input_data: str, selected_documents: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
         Process the requirements and generate structured test cases.
         
         Args:
             input_data: Requirements text
+            selected_documents: Optional list of specific filenames to use for RAG
             
         Returns:
             List of structured test cases
@@ -107,81 +108,81 @@ class TestCaseGenerationAgent(AgentInterface):
         self.context["last_requirements"] = input_data
         
         # 1. Synthesize Product/System Context using RAG
-        # Note: In a production scenario, we might want to cache this or initialize it 
-        # outside the request loop if the documents don't change often.
         try:
             # Re-using the functions from rag_system module
             logger.info("Calling RAG: load_documents")
             print("[RAG DEBUG] Starting RAG system...")
             
-            # Get selected documents from session state if available
-            selected_docs = None
-            try:
-                import streamlit as st
-                if hasattr(st, 'session_state') and 'selected_documents' in st.session_state:
-                    selected_docs = st.session_state.selected_documents
-                    if selected_docs:
-                        print(f"[RAG DEBUG] Using {len(selected_docs)} selected documents: {selected_docs}")
-                    else:
-                        print("[RAG DEBUG] No documents selected, will use all documents")
-            except Exception as e:
-                print(f"[RAG DEBUG] Could not access session state: {e}, will use all documents")
+            if selected_documents:
+                print(f"[RAG DEBUG] Using {len(selected_documents)} passed documents: {selected_documents}")
+            else:
+                print("[RAG DEBUG] No documents specified, will use all documents from requirements folder")
             
             # Load documents (selected or all)
-            documents = load_documents(file_list=selected_docs)
+            documents = load_documents(file_list=selected_documents)
             
             if not documents:
-                logger.warning("No documents found in RAG directory.")
-                print("[RAG DEBUG] No documents found in RAG directory")
-                product_context = "No specific project documentation found."
+                error_detail = "No documents found"
+                if selected_documents:
+                    error_detail = f"None of the selected documents could be loaded: {selected_documents}"
+                else:
+                    error_detail = f"No documents found in Knowledge Hub directory ({DATA_PATH})"
+                
+                logger.warning(error_detail)
+                print(f"[RAG DEBUG] {error_detail}")
+                product_context = f"No specific project documentation found. ({error_detail})"
             else:
                 logger.info(f"Loaded {len(documents)} documents")
                 print(f"[RAG DEBUG] Successfully loaded {len(documents)} documents")
                 
                 chunks = split_documents(documents)
-                print(f"[RAG DEBUG] Split into {len(chunks)} chunks")
-                
-                api_key = self.llm.config.get('api_key') if hasattr(self.llm, 'config') else None
-                llm_model = self.llm.config.get('model') if hasattr(self.llm, 'config') else None
-                print(f"[RAG DEBUG] API Key available: {bool(api_key)}")
-                print(f"[RAG DEBUG] LLM Model: {llm_model}")
-                
-                try:
-                    print("[RAG DEBUG] Creating vector database...")
-                    vector_db = create_vector_db(chunks, openai_api_key=api_key)
-                    print("[RAG DEBUG] Vector DB created successfully")
-                except Exception as vdb_error:
-                    print(f"[RAG DEBUG] Vector DB creation FAILED: {str(vdb_error)}")
-                    logger.error(f"Vector DB creation failed: {vdb_error}")
-                    raise
-                
-                try:
-                    print("[RAG DEBUG] Retrieving relevant context based on user input...")
-                    # Use query-based synthesis to get comprehensive related context
-                    product_context = synthesize_requirements_for_query(
-                        vector_db, 
-                        query=input_data,
-                        openai_api_key=api_key, 
-                        model=llm_model,
-                        top_k=20  # Retrieve top 20 chunks for comprehensive coverage
-                    )
-                    print("[RAG DEBUG] Context retrieved and synthesized successfully")
-                except Exception as synth_error:
-                    print(f"[RAG DEBUG] Synthesis FAILED: {str(synth_error)}")
-                    logger.error(f"Synthesis failed: {synth_error}")
-                    raise
-                
-            if not product_context:
-                product_context = "No specific project documentation found."
-                print("[RAG DEBUG] Product context is empty, using default message")
+                if not chunks:
+                    print("[RAG DEBUG] Split resulted in 0 chunks")
+                    product_context = "No specific project documentation found. (Document splitting resulted in 0 manageable chunks)"
+                else:
+                    print(f"[RAG DEBUG] Split into {len(chunks)} chunks")
+                    
+                    api_key = self.llm.config.get('api_key') if hasattr(self.llm, 'config') else None
+                    llm_model = self.llm.config.get('model') if hasattr(self.llm, 'config') else None
+                    
+                    try:
+                        print("[RAG DEBUG] Creating vector database...")
+                        vector_db = create_vector_db(chunks, openai_api_key=api_key)
+                        print("[RAG DEBUG] Vector DB created successfully")
+                        
+                        print("[RAG DEBUG] Retrieving relevant context based on user input...")
+                        product_context = synthesize_requirements_for_query(
+                            vector_db, 
+                            query=input_data,
+                            openai_api_key=api_key, 
+                            model=llm_model,
+                            top_k=20
+                        )
+                        print("[RAG DEBUG] Context retrieved and synthesized successfully")
+                    except Exception as inner_error:
+                        print(f"[RAG DEBUG] Processing FAILED: {str(inner_error)}")
+                        logger.error(f"RAG Processing failed: {inner_error}")
+                        
+                        # Add user-friendly error handling for common issues
+                        error_msg = str(inner_error)
+                        if "readonly database" in error_msg.lower() or "code: 1032" in error_msg.lower():
+                            friendly_msg = (
+                                "Database Permission Error: The system cannot write to its storage folder. "
+                                "This often happens if the app is installed in a restricted location (like some folders on macOS). "
+                                "Please ensure the application has write permissions or try moving the project to your Documents folder."
+                            )
+                        elif "api_key" in error_msg.lower() or "unauthorized" in error_msg.lower():
+                            friendly_msg = "API Key Error: Please check if your OpenAI API key is correct and has sufficient credits."
+                        else:
+                            friendly_msg = f"Knowledge synthesis encountered an issue: {error_msg}"
+                            
+                        product_context = f"Unable to retrieve documentation. {friendly_msg}"
                 
         except Exception as e:
             import traceback
-            print(f"[RAG DEBUG] EXCEPTION CAUGHT: {type(e).__name__}: {str(e)}")
-            print(f"[RAG DEBUG] Traceback: {traceback.format_exc()}")
+            print(f"[RAG DEBUG] TOP-LEVEL EXCEPTION: {type(e).__name__}: {str(e)}")
             logger.error(f"Failed to synthesize requirements via RAG: {e}")
-            logger.error(f"Full traceback: {traceback.format_exc()}")
-            product_context = "No specific project documentation found."
+            product_context = f"No specific project documentation found. (System Error: {str(e)})"
 
         
         # Prepare the final prompt with product context

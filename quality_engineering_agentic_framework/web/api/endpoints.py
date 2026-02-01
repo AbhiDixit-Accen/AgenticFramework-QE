@@ -98,7 +98,7 @@ async def generate_test_cases(request: TestCaseGenerationRequest):
         
         # Process requirements
         logger.info("Processing requirements...")
-        result = await agent.process(request.requirements)
+        result = await agent.process(request.requirements, selected_documents=request.selected_documents)
         
         # Extract test cases and product context
         if isinstance(result, dict):
@@ -150,7 +150,7 @@ async def generate_test_scripts(request: TestScriptGenerationRequest):
         llm = LLMFactory.create_llm(llm_config)
         
         # Initialize agent
-        agent_config = request.agent_config.dict() if request.agent_config else {}
+        agent_config = request.agent_config.model_dump() if request.agent_config else {}
         agent = TestScriptGenerator(llm, agent_config)
         
         # Convert test cases to dictionaries for processing
@@ -363,7 +363,7 @@ async def chat_with_agent(request: ChatRequest, session_id: str = Query(None)):
             agent_sessions[agent_key] = agent
         
         # Process the chat request
-        response_content, artifacts = await agent.chat(request.messages)
+        response_content, artifacts = await agent.chat(request.messages, selected_documents=request.selected_documents)
         
         # Create the response
         chat_response = ChatResponse(
