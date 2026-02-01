@@ -335,7 +335,7 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
                             },
                             "agent_type": agent_type_map[agent_type],
                             "session_id": st.session_state.chat_session_id,
-                            "selected_documents": st.session_state.selected_documents if 'selected_documents' in st.session_state else None
+                            "selected_documents": st.session_state.get('selected_documents', [])
                         }
                         
                         response = requests.post(f"{API_URL}/api/chat", json=request_data)

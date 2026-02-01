@@ -54,7 +54,7 @@ def load_documents(file_list=None):
     documents = []
 
     # Get list of files to process
-    if file_list:
+    if file_list is not None:
         files_to_load = [f for f in file_list if os.path.isfile(os.path.join(DATA_PATH, f))]
         print(f"[RAG] Loading {len(files_to_load)} selected documents: {files_to_load}")
     else:

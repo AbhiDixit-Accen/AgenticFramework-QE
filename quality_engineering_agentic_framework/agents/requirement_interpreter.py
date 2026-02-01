@@ -122,8 +122,9 @@ class TestCaseGenerationAgent(AgentInterface):
             documents = load_documents(file_list=selected_documents)
             
             if not documents:
-                error_detail = "No documents found"
-                if selected_documents:
+                if selected_documents is not None and len(selected_documents) == 0:
+                    error_detail = "No documents selected in the Knowledge Hub. Please select at least one document to provide context."
+                elif selected_documents:
                     error_detail = f"None of the selected documents could be loaded: {selected_documents}"
                 else:
                     error_detail = f"No documents found in Knowledge Hub directory ({DATA_PATH})"

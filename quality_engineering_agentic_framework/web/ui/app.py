@@ -341,6 +341,9 @@ def main():
     if 'test_scripts' not in st.session_state:
         st.session_state.test_scripts = {}
         
+    if 'selected_documents' not in st.session_state:
+        st.session_state.selected_documents = []
+        
     # Debug flag - set to True to see debug info
     debug = False  # Disabled by default
     
@@ -467,7 +470,7 @@ def main():
                             llm_api_key=llm_api_key,
                             llm_temperature=llm_temperature,
                             llm_max_tokens=llm_max_tokens,
-                            selected_documents=st.session_state.selected_documents if 'selected_documents' in st.session_state else None
+                            selected_documents=st.session_state.get('selected_documents', [])
                         ))
                         
                         if isinstance(result, dict):
@@ -694,9 +697,7 @@ def main():
         st.header("📚 Knowledge Hub")
         st.write("Manage your requirement documents for the RAG (Retrieval-Augmented Generation) system")
         
-        # Initialize session state for selected documents
-        if 'selected_documents' not in st.session_state:
-            st.session_state.selected_documents = []
+        # session state for selected documents is initialized at startup
         
         # Helper function to clear vector DB
         def clear_vector_db():
