@@ -9,6 +9,7 @@ import json
 import yaml
 import logging
 import streamlit as st
+import streamlit.components.v1 as components
 from typing import Dict, List, Any, Optional, Union
 import tempfile
 from datetime import datetime
@@ -20,6 +21,7 @@ import random
 import string
 import pandas as pd
 from io import StringIO
+import textwrap
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -41,6 +43,20 @@ if 'generate_data' not in st.session_state:
     st.session_state.llm_api_key = ""
     st.session_state.llm_temperature = 0.7
     st.session_state.llm_max_tokens = 1000
+
+if 'inspector_session_id' not in st.session_state:
+    st.session_state.inspector_session_id = None
+    st.session_state.show_inspector_popup = False
+    st.session_state.captured_elements_count = 0
+    st.session_state.inspector_elements = []
+    st.session_state.inspector_script = ""
+    st.session_state.inspector_error = ""
+    st.session_state.imported_elements = []
+    st.session_state.import_error = ""
+    st.session_state.import_upload_nonce = 0
+
+if 'import_upload_nonce' not in st.session_state:
+    st.session_state.import_upload_nonce = 0
 
 async def generate_test_cases(requirements, llm_provider, llm_model, llm_api_key, llm_temperature, llm_max_tokens, mode="requirement", selected_documents=None):
     """Generate test cases by calling the correct backend API based on mode."""
@@ -199,6 +215,354 @@ async def generate_test_cases(requirements, llm_provider, llm_model, llm_api_key
         import traceback
         traceback.print_exc()
         return []
+
+
+def ensure_inspector_session_id() -> str:
+    """Ensure the inspector session ID exists and return it."""
+    session_id = st.session_state.get("inspector_session_id")
+    if not session_id:
+        session_id = f"inspector_{uuid.uuid4().hex[:8]}"
+        st.session_state.inspector_session_id = session_id
+    return session_id
+
+
+def start_new_inspector_session() -> None:
+    """Begin a brand-new inspector session and reset counters."""
+    st.session_state.inspector_session_id = f"inspector_{uuid.uuid4().hex[:8]}"
+    st.session_state.captured_elements_count = 0
+    st.session_state.inspector_elements = []
+    st.session_state.inspector_error = ""
+
+
+def fetch_inspector_script(force_refresh: bool = False) -> Optional[str]:
+    """Fetch inspector JavaScript from the backend and cache it."""
+    if st.session_state.get("inspector_script") and not force_refresh:
+        return st.session_state.inspector_script
+    try:
+        response = requests.get(f"{API_URL}/api/inspect/script", timeout=15)
+        response.raise_for_status()
+        st.session_state.inspector_script = response.text
+        st.session_state.inspector_error = ""
+        return response.text
+    except Exception as exc:
+        st.session_state.inspector_error = f"Failed to load inspector script: {exc}"
+        return None
+
+
+def build_inspector_console_snippet(session_id: str, script_body: str, llm_config: Optional[Dict[str, Any]] = None) -> str:
+    """Produce a copy-paste-ready snippet for the browser console."""
+    api_literal = json.dumps(API_URL)
+    session_literal = json.dumps(session_id)
+    llm_literal = "null" if not llm_config else json.dumps(llm_config)
+    indented_script = textwrap.indent(script_body.strip(), "      ")
+    return (
+        "(() => {\n"
+        f"  window.QEAF_API_URL = {api_literal};\n"
+        f"  window.QEAF_SESSION_ID = {session_literal};\n"
+        f"  window.QEAF_LLM_CONFIG = {llm_literal};\n"
+    "  window.QEAF_AUTO_ACTIVATE = true;\n"
+        "  try {\n"
+        "    if (window.QEAFInspector) {\n"
+    "      console.info('QEAF Inspector already loaded. Re-activating...');\n"
+    "      window.QEAFInspector.activate();\n"
+        "    } else {\n"
+        f"{indented_script}\n"
+    "      if (window.QEAFInspector) {\n"
+    "        window.QEAFInspector.activate();\n"
+    "      }\n"
+    "    }\n"
+    "    console.info('Inspector ready to capture elements.');\n"
+        "  } catch (error) {\n"
+        "    console.error('Failed to initialize inspector', error);\n"
+        "  }\n"
+        "})();"
+    )
+
+
+def format_session_elements(session_payload: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Format raw session payload into a table-friendly structure."""
+    if not isinstance(session_payload, dict):
+        return []
+    elements = session_payload.get("elements", {}) or {}
+    formatted: List[Dict[str, Any]] = []
+    for element_id, info in elements.items():
+        element_meta = info.get("element_data") or {}
+        attrs = element_meta.get("attributes") if isinstance(element_meta, dict) else {}
+        attrs = attrs if isinstance(attrs, dict) else {}
+        selectors = info.get("selectors") or []
+        primary_selector = ""
+        selector_type = ""
+        for block in selectors:
+            if block.get("framework") == "playwright" and block.get("selectors"):
+                selection = block["selectors"][0]
+                primary_selector = selection.get("selector", "")
+                selector_type = selection.get("type", "")
+                break
+        if not primary_selector and selectors:
+            first_block = selectors[0].get("selectors") or []
+            if first_block:
+                primary_selector = first_block[0].get("selector", "")
+                selector_type = first_block[0].get("type", "")
+        inner_text = ""
+        if isinstance(element_meta, dict):
+            inner_text = (element_meta.get("innerText") or element_meta.get("textContent") or "").strip()
+        identifier = ""
+        if isinstance(element_meta, dict):
+            identifier = element_meta.get("id") or attrs.get("data-testid", "")
+        else:
+            identifier = attrs.get("data-testid", "")
+        formatted.append({
+            "Element ID": element_id,
+            "Tag": element_meta.get("tagName", "") if isinstance(element_meta, dict) else "",
+            "ID / Test Attr": identifier,
+            "Text": inner_text[:60],
+            "Primary Selector": primary_selector,
+            "Selector Type": selector_type,
+            "Captured": info.get("captured_at"),
+        })
+    return sorted(formatted, key=lambda item: item.get("Captured") or "", reverse=True)
+
+
+def parse_exported_inspector_file(raw_bytes: bytes) -> List[Dict[str, Any]]:
+    """Convert exported inspector JSON into table rows."""
+    try:
+        payload = json.loads(raw_bytes.decode("utf-8"))
+    except Exception as exc:  # pragma: no cover
+        raise ValueError(f"Invalid JSON: {exc}") from exc
+
+    elements = payload.get("elements") or []
+    source_session = payload.get("session_id", "import")
+    formatted: List[Dict[str, Any]] = []
+
+    for idx, record in enumerate(elements, 1):
+        element_meta = record.get("element") or record.get("element_data") or {}
+        selectors = record.get("selectors") or []
+
+        selector_value = ""
+        selector_type = ""
+        if selectors:
+            first_block = selectors[0]
+            if isinstance(first_block, dict) and first_block.get("selectors"):
+                sel_entry = first_block["selectors"][0]
+                selector_value = sel_entry.get("selector", "")
+                selector_type = sel_entry.get("type", "")
+            elif isinstance(first_block, dict):
+                selector_value = first_block.get("selector", "")
+                selector_type = first_block.get("type", "")
+
+        formatted.append({
+            "Element ID": f"import_{idx}",
+            "Tag": element_meta.get("tagName", ""),
+            "ID / Test Attr": element_meta.get("id") or (element_meta.get("attributes", {}) or {}).get("data-testid", ""),
+            "Text": (element_meta.get("innerText") or element_meta.get("textContent") or "").strip()[:60],
+            "Primary Selector": selector_value,
+            "Selector Type": selector_type,
+            "Captured": record.get("capturedAt") or record.get("captured_at"),
+            "Source Session": source_session,
+        })
+
+    return formatted
+
+
+def clear_imported_inspector_data() -> None:
+    """Reset imported inspector artifacts in session state."""
+    st.session_state.imported_elements = []
+    st.session_state.import_error = ""
+    st.session_state.import_upload_nonce = st.session_state.get("import_upload_nonce", 0) + 1
+
+
+def render_copy_button(copy_text: str, key: str) -> None:
+    """Render a custom copy-to-clipboard button using Streamlit components."""
+    safe_text = json.dumps(copy_text)
+    components.html(
+        f"""
+        <div class="qeaf-copy-wrap">
+            <button id="{key}" class="qeaf-copy-btn">Copy Snippet</button>
+        </div>
+        <script>
+            (function() {{
+                const button = document.getElementById('{key}');
+                if (!button) {{
+                    return;
+                }}
+                const original = button.textContent;
+                button.addEventListener('click', async () => {{
+                    try {{
+                        await navigator.clipboard.writeText({safe_text});
+                        button.textContent = 'Copied!';
+                        button.classList.add('qeaf-copied');
+                        setTimeout(() => {{
+                            button.textContent = original;
+                            button.classList.remove('qeaf-copied');
+                        }}, 2000);
+                    }} catch (err) {{
+                        console.error('Failed to copy inspector snippet', err);
+                        button.textContent = 'Copy failed';
+                        setTimeout(() => {{
+                            button.textContent = original;
+                        }}, 2000);
+                    }}
+                }});
+            }})();
+        </script>
+        <style>
+            .qeaf-copy-wrap {{
+                display: flex;
+                justify-content: flex-end;
+                margin-top: 0.5rem;
+            }}
+            .qeaf-copy-btn {{
+                background-color: #0f62fe;
+                color: white;
+                border: none;
+                padding: 0.35rem 0.9rem;
+                border-radius: 0.35rem;
+                font-size: 0.9rem;
+                cursor: pointer;
+            }}
+            .qeaf-copy-btn.qeaf-copied {{
+                background-color: #198038;
+            }}
+        </style>
+        """,
+        height=80,
+    )
+
+
+def refresh_elements() -> None:
+    """Load captured elements for the current inspector session."""
+    session_id = ensure_inspector_session_id()
+    try:
+        response = requests.get(f"{API_URL}/api/inspect/session/{session_id}", timeout=15)
+        response.raise_for_status()
+        payload = response.json()
+        session_payload = payload.get("data") if isinstance(payload, dict) and "data" in payload else payload
+        formatted = format_session_elements(session_payload)
+        st.session_state.inspector_elements = formatted
+        st.session_state.captured_elements_count = len(formatted)
+        st.session_state.inspector_error = ""
+    except Exception as exc:
+        st.session_state.inspector_error = f"Failed to load captured elements: {exc}"
+
+
+def render_inspector_popup() -> None:
+    """Render the Streamlit dialog content for the inspector workflow."""
+    session_id = ensure_inspector_session_id()
+    inspector_code = fetch_inspector_script()
+
+    def _safe_cast(value, caster, default):
+        try:
+            return caster(value)
+        except (TypeError, ValueError):
+            return default
+
+    llm_config = {
+        "provider": st.session_state.get("llm_provider", "openai"),
+        "model": st.session_state.get("llm_model", "gpt-4"),
+        "api_key": st.session_state.get("llm_api_key", ""),
+        "temperature": _safe_cast(st.session_state.get("llm_temperature", 0.2), float, 0.2),
+        "max_tokens": _safe_cast(st.session_state.get("llm_max_tokens", 2000), int, 2000),
+    }
+
+    top_cols = st.columns([3, 2, 1])
+    with top_cols[0]:
+        st.markdown(f'**Session ID:** `{session_id}`')
+        st.caption("Use this ID when correlating captured selectors with generated scripts.")
+    with top_cols[1]:
+        st.metric("Captured Elements", st.session_state.captured_elements_count)
+    with top_cols[2]:
+        st.button("♻️ New Session ID", key="new_session_button", on_click=start_new_inspector_session)
+
+    st.button("🔄 Refresh", key="refresh_elements_button", on_click=refresh_elements, use_container_width=True)
+
+    st.markdown("### Step 1 · Copy Inspector Code")
+    if inspector_code:
+        snippet = build_inspector_console_snippet(session_id, inspector_code, llm_config)
+        with st.container(border=True):
+            st.markdown("#### Inspector Console Snippet")
+            st.caption("Paste this block into your browser console; the inspector auto-activates once loaded.")
+            with st.expander("Show / Hide Console Snippet", expanded=False):
+                st.code(snippet, language="javascript")
+                render_copy_button(snippet, key=f"copy_snippet_{session_id}")
+    else:
+        st.error("Unable to load inspector JavaScript. Ensure the backend /api/inspect/script endpoint is reachable.")
+
+    with st.expander("Need a demo page?"):
+        st.markdown(
+            "1. Run `qeaf web` to start the backend and UI.\n"
+            "2. Open `examples/inspector_demo.html` in your browser.\n"
+            "3. Paste the code above into the browser console and press Enter."
+        )
+
+    st.markdown("### Step 2 · Capture & Review Elements")
+    import_cols = st.columns([3, 1])
+    upload_key = f"inspector_import_upload_{st.session_state.get('import_upload_nonce', 0)}"
+    with import_cols[0]:
+        uploaded_import = st.file_uploader(
+            "Import exported inspector JSON",
+            type=["json"],
+            key=upload_key,
+            help="Upload a JSON export from the browser inspector to review or merge it here.",
+        )
+    with import_cols[1]:
+        st.button(
+            "Clear Imported",
+            key="clear_imported_button",
+            use_container_width=True,
+            on_click=clear_imported_inspector_data,
+        )
+
+    if uploaded_import is not None:
+        try:
+            imported_rows = parse_exported_inspector_file(uploaded_import.getvalue())
+            st.session_state.imported_elements = imported_rows
+            st.session_state.import_error = ""
+            st.success(f"Imported {len(imported_rows)} elements from '{uploaded_import.name}'.")
+        except ValueError as exc:
+            st.session_state.import_error = str(exc)
+
+    if st.session_state.import_error:
+        st.error(st.session_state.import_error)
+
+    imported_preview = st.session_state.get("imported_elements", [])
+    if imported_preview:
+        st.markdown("#### Imported Elements Preview")
+        st.caption("Review imported data before merging it with live captures.")
+        st.dataframe(pd.DataFrame(imported_preview), use_container_width=True)
+        if st.button("Merge Imported Into Table", key="merge_imported_button", use_container_width=True):
+            merged = imported_preview + st.session_state.get("inspector_elements", [])
+            st.session_state.inspector_elements = merged
+            st.session_state.captured_elements_count = len(merged)
+            st.session_state.imported_elements = []
+            st.success(f"Added {len(imported_preview)} imported elements to this session.")
+        st.caption("Merging only affects the table below; it does not sync back to the browser session.")
+
+    st.button(
+        "🔍 Load Captured Elements",
+        key="load_captured_elements_button",
+        use_container_width=True,
+        on_click=refresh_elements,
+    )
+
+    if st.session_state.inspector_error:
+        st.error(st.session_state.inspector_error)
+
+    elements = st.session_state.get("inspector_elements", [])
+    if elements:
+        st.dataframe(pd.DataFrame(elements), use_container_width=True)
+    else:
+        st.info("No elements captured yet. Activate the inspector in your browser, click elements, then refresh this list.")
+
+    st.markdown("---")
+    if st.button("✅ Close Inspector", use_container_width=True, key="close_inspector_button", type="primary"):
+        st.session_state.show_inspector_popup = False
+        st.rerun()
+
+
+@st.dialog("🔍 Browser Element Inspector", width="large")
+def inspector_dialog() -> None:
+    """Wrapper to render the inspector dialog via Streamlit's modal API."""
+    render_inspector_popup()
 
 # Set page configuration
 st.set_page_config(
@@ -397,10 +761,12 @@ def main():
         
         if llm_api_key:
             st.session_state[f"{llm_provider}_api_key"] = llm_api_key
-        
+            st.session_state.llm_api_key = llm_api_key
+
         # Load API key from session state if available
         if f"{llm_provider}_api_key" in st.session_state:
             llm_api_key = st.session_state[f"{llm_provider}_api_key"]
+            st.session_state.llm_api_key = llm_api_key
             
         # Pinned to bottom of sidebar
         st.markdown("---")
@@ -432,6 +798,9 @@ def main():
     except Exception as e:
         st.error(f"Error creating tabs: {str(e)}")
         st.stop()
+
+    if st.session_state.get("show_inspector_popup"):
+        inspector_dialog()
     
     # Test Case Generation Tab
     with tabs[TAB_TEST_CASE_GEN]:
@@ -877,7 +1246,15 @@ def main():
     
     # Test Script Generation Tab
     with tabs[TAB_TEST_SCRIPT_GEN]:
-        st.header("Test Script Generation")
+        header_col, inspector_col = st.columns([3, 1])
+        with header_col:
+            st.header("Test Script Generation")
+        with inspector_col:
+            if st.button("🔍 Inspector", key="open_inspector_button", use_container_width=True):
+                ensure_inspector_session_id()
+                st.session_state.inspector_error = ""
+                st.session_state.show_inspector_popup = True
+                inspector_dialog()
         st.write("Convert test cases into executable test scripts")
         
         # Create sub-tabs for Integrated and Standalone solutions

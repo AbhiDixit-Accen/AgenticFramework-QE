@@ -25,6 +25,7 @@ from quality_engineering_agentic_framework.web.api.models import (
     ChatMessage, ChatRequest, ChatResponse,
     TestCaseArtifact, TestScriptArtifact, TestDataArtifact
 )
+from quality_engineering_agentic_framework.web.api import inspector_endpoints
 from quality_engineering_agentic_framework.llm.llm_factory import LLMFactory
 from quality_engineering_agentic_framework.agents.requirement_interpreter import TestCaseGenerationAgent
 from quality_engineering_agentic_framework.agents.test_script_generator import TestScriptGenerator
@@ -53,6 +54,8 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["Content-Range"],
 )
+
+app.include_router(inspector_endpoints.router)
 
 # Store active agent sessions
 agent_sessions = {}

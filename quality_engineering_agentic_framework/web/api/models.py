@@ -154,3 +154,17 @@ class ChatResponse(BaseModel):
     """Response model for chat."""
     message: ChatMessage
     artifacts: Optional[Union[TestCaseArtifact, TestScriptArtifact, TestDataArtifact]] = Field(None, description="Generated artifacts if any")
+
+
+class BrowserInspectorRequest(BaseModel):
+    """Request payload for browser inspector operations."""
+    action: str = Field(..., description="Inspector action (capture_element, validate_selector, get_session)")
+    payload: Dict[str, Any] = Field(default_factory=dict, description="Action-specific payload data")
+    llm_config: Optional[LLMConfig] = Field(None, description="Optional LLM configuration to use for inspector processing")
+
+
+class BrowserInspectorResponse(BaseModel):
+    """Response wrapper for browser inspector results."""
+    success: bool = Field(..., description="Indicates whether the operation succeeded")
+    data: Optional[Dict[str, Any]] = Field(None, description="Result data returned by the inspector")
+    error: Optional[str] = Field(None, description="Error message when success is False")
