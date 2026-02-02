@@ -496,7 +496,11 @@ def main():
         if 'product_context' in st.session_state and st.session_state.product_context:
             with st.expander("🔍 View Synthesized Product Knowledge (RAG Output)", expanded=False):
                 st.info("The information below was synthesized from your product documentation to provide context for test generation.")
-                st.markdown(st.session_state.product_context)
+                # Remove JSON Mapping section (everything after ```json)
+                product_context = st.session_state.product_context
+                if "```json" in product_context:
+                    product_context = product_context[:product_context.index("```json")].strip()
+                st.markdown(product_context)
         
         # Display test cases if available
         if 'test_cases' in st.session_state and st.session_state.test_cases:
@@ -694,8 +698,8 @@ def main():
     
     # Knowledge Hub Tab
     with tabs[TAB_KNOWLEDGE_HUB]:
-        st.header("📚 Knowledge Hub")
-        st.write("Manage your requirement documents for the RAG (Retrieval-Augmented Generation) system")
+        st.header("Knowledge Hub")
+        st.write("Select Documents for Test Case Generation")
         
         # session state for selected documents is initialized at startup
         
@@ -716,8 +720,7 @@ def main():
             return True
         
         # Document List Section with Selection
-        st.subheader("📄 Select Documents for Test Generation")
-        st.info("Select which documents to use for generating test cases. The vector database will be rebuilt using only the selected documents.")
+        st.subheader("Documents")
         
         try:
             from quality_engineering_agentic_framework.utils.rag.rag_system import DATA_PATH
@@ -744,11 +747,37 @@ def main():
                     st.divider()
                     
                     # Display documents with checkboxes and delete buttons
+                    # Add CSS to make checkbox green when selected and align elements
+                    st.markdown("""
+                    <style>
+                    [data-baseweb="checkbox"] {
+                        filter: hue-rotate(120deg) saturate(1.2) !important;
+                    }
+                    [data-testid="stColumn"] {
+                        vertical-align: middle !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: flex-start !important;
+                    }
+                    .stMarkdownContainer {
+                        display: flex !important;
+                        align-items: center !important;
+                        height: 100% !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                    }
+                    .stMarkdownContainer p {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
                     for filename in files:
                         file_path = os.path.join(DATA_PATH, filename)
                         file_stats = os.stat(file_path)
                         
-                        col1, col2, col3, col4 = st.columns([0.5, 3, 1.5, 1])
+                        col1, col2, col3, col4 = st.columns([0.6, 2.2, 1.1, 0.7])
                         
                         with col1:
                             is_selected = filename in st.session_state.selected_documents
@@ -762,8 +791,7 @@ def main():
                                     st.rerun()
                         
                         with col2:
-                            icon = "✅" if is_selected else "📄"
-                            st.write(f"{icon} **{filename}**")
+                            st.write(f"**{filename}**")
                         
                         with col3:
                             st.caption(f"{file_stats.st_size:,} bytes")
@@ -786,7 +814,7 @@ def main():
         st.divider()
         
         # Upload Document Section
-        st.subheader("📤 Upload Requirement Document")
+        st.subheader("Upload Requirement Document")
         upload_file = st.file_uploader("Choose a file to upload", type=["txt", "md", "pdf", "docx"], key="upload_req_file")
         
         if upload_file is not None:
@@ -816,44 +844,8 @@ def main():
         
         st.divider()
         
-        # Create New Document Section
-        with st.expander("✍️ Create New Document from Text"):
-            new_doc_name = st.text_input("Document Filename", placeholder="e.g., login_requirements.md", key="new_doc_name")
-            new_doc_content = st.text_area("Document Content", height=200, placeholder="Enter your requirements here...", key="new_doc_content")
-            
-            if st.button("Create & Select Document", key="create_doc_btn"):
-                if not new_doc_name or not new_doc_content:
-                    st.error("Please provide both filename and content.")
-                else:
-                    try:
-                        from quality_engineering_agentic_framework.utils.rag.rag_system import DATA_PATH
-                        
-                        # Ensure filename has extension
-                        if not new_doc_name.endswith(('.txt', '.md')):
-                            new_doc_name += '.md'
-                        
-                        file_path = os.path.join(DATA_PATH, new_doc_name)
-                        os.makedirs(DATA_PATH, exist_ok=True)
-                        
-                        with open(file_path, 'w') as f:
-                            f.write(new_doc_content)
-                        
-                        # Automatically select the new document
-                        if new_doc_name not in st.session_state.selected_documents:
-                            st.session_state.selected_documents.append(new_doc_name)
-                        
-                        # Clear vector DB to force rebuild
-                        clear_vector_db()
-                        
-                        st.success(f"✅ Created and selected '{new_doc_name}'")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error creating document: {str(e)}")
-        
-        st.divider()
-        
         # Information Section
-        with st.expander("ℹ️ How It Works"):
+        with st.expander("How It Works"):
             st.markdown("""
             ### Document Selection & Vector Database
             

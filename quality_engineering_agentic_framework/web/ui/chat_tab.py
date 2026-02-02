@@ -170,7 +170,11 @@ def render_chat_tab(API_URL: str, llm_provider: str, llm_model: str, llm_api_key
                     # Display product context if available in artifacts
                     if "product_context" in msg["artifacts"] and msg["artifacts"]["product_context"]:
                         with st.expander("🔍 View Synthesized Product Knowledge (RAG)"):
-                            st.markdown(msg["artifacts"]["product_context"])
+                            # Remove JSON Mapping section (everything after ```json)
+                            product_context = msg["artifacts"]["product_context"]
+                            if "```json" in product_context:
+                                product_context = product_context[:product_context.index("```json")].strip()
+                            st.markdown(product_context)
                             
                     with st.expander("View Test Cases"):
                         for i, tc in enumerate(test_cases, 1):
