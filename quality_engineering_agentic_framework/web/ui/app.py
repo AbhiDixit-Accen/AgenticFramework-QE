@@ -815,7 +815,12 @@ def main():
         
         # Upload Document Section
         st.subheader("Upload Requirement Document")
-        upload_file = st.file_uploader("Choose a file to upload", type=["txt", "md", "pdf", "docx"], key="upload_req_file")
+        
+        # Initialize upload counter if not exists
+        if 'upload_counter' not in st.session_state:
+            st.session_state.upload_counter = 0
+        
+        upload_file = st.file_uploader("Choose a file to upload", type=["txt", "md", "pdf", "docx"], key=f"upload_req_file_{st.session_state.upload_counter}")
         
         if upload_file is not None:
             col_upload, col_cancel = st.columns([1, 3])
@@ -836,6 +841,9 @@ def main():
                         
                         # Clear vector DB to force rebuild
                         clear_vector_db()
+                        
+                        # Increment counter to clear file uploader
+                        st.session_state.upload_counter += 1
                         
                         st.success(f"✅ Uploaded and selected '{upload_file.name}'")
                         st.rerun()
