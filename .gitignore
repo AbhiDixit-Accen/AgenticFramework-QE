@@ -79,3 +79,4 @@ quality_engineering_agentic_framework.egg-info/PKG-INFO
 quality_engineering_agentic_framework/utils/__pycache__/__init__.cpython-312.pyc
 quality_engineering_agentic_framework/__pycache__/__init__.cpython-312.pyc
 quality_engineering_agentic_framework/agents/__pycache__/__init__.cpython-312.pyc
+quality_engineering_agentic_framework/utils/rag/fingerprint_cache.json

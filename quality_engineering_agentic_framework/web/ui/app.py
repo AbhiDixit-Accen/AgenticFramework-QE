@@ -736,10 +736,14 @@ def main():
                     with col_all:
                         if st.button("✅ Select All"):
                             st.session_state.selected_documents = files.copy()
+                            for filename in files:
+                                st.session_state[f"select_{filename}"] = True
                             st.rerun()
                     with col_none:
                         if st.button("❌ Deselect All"):
                             st.session_state.selected_documents = []
+                            for filename in files:
+                                st.session_state[f"select_{filename}"] = False
                             st.rerun()
                     with col_info:
                         st.caption(f"{len(st.session_state.selected_documents)} of {len(files)} documents selected")
@@ -781,14 +785,28 @@ def main():
                         
                         with col1:
                             is_selected = filename in st.session_state.selected_documents
-                            if st.checkbox(f"Select {filename}", value=is_selected, key=f"select_{filename}", label_visibility="collapsed"):
-                                if filename not in st.session_state.selected_documents:
-                                    st.session_state.selected_documents.append(filename)
-                                    st.rerun()
-                            else:
-                                if filename in st.session_state.selected_documents:
-                                    st.session_state.selected_documents.remove(filename)
-                                    st.rerun()
+                            checkbox_key = f"select_{filename}"
+                            
+                            # Initialize checkbox state if not exists
+                            if checkbox_key not in st.session_state:
+                                st.session_state[checkbox_key] = is_selected
+                            
+                            # Handle checkbox change
+                            new_state = st.checkbox(
+                                f"Select {filename}",
+                                key=checkbox_key,
+                                label_visibility="collapsed"
+                            )
+                            
+                            # If state changed, update selected_documents
+                            if new_state != is_selected:
+                                if new_state:
+                                    if filename not in st.session_state.selected_documents:
+                                        st.session_state.selected_documents.append(filename)
+                                else:
+                                    if filename in st.session_state.selected_documents:
+                                        st.session_state.selected_documents.remove(filename)
+                                st.rerun()
                         
                         with col2:
                             st.write(f"**{filename}**")
