@@ -104,7 +104,10 @@ def load_documents(file_list=None):
         try:
             loaded_docs = []
             if file.endswith((".txt", ".md")):
-                loaded_docs = TextLoader(file_path).load()
+                try:
+                    loaded_docs = TextLoader(file_path, encoding="utf-8").load()
+                except Exception:
+                    loaded_docs = TextLoader(file_path, encoding="cp1252", errors="ignore").load()
 
             elif file.endswith(".pdf"):
                 try:

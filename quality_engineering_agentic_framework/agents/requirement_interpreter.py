@@ -13,7 +13,7 @@ from quality_engineering_agentic_framework.agents.agent_interface import AgentIn
 from quality_engineering_agentic_framework.llm.llm_interface import LLMInterface
 from quality_engineering_agentic_framework.utils.logger import get_logger
 from quality_engineering_agentic_framework.web.api.models import ChatMessage, TestCase
-from quality_engineering_agentic_framework.utils.rag.rag_system import load_documents, split_documents, create_vector_db, synthesize_requirements, synthesize_requirements_for_query
+from quality_engineering_agentic_framework.utils.rag.rag_system import DATA_PATH, load_documents, split_documents, create_vector_db, synthesize_requirements, synthesize_requirements_for_query
 
 logger = get_logger(__name__)
 
@@ -327,11 +327,15 @@ class TestCaseGenerationAgent(AgentInterface):
         
         Your mission is to map incoming "User Requirements" against the "Project Source of Truth" documentation.
         
-        CRITICAL RULES:
-        1. AUTHORITATIVE DATA: Never use generic placeholders if the Project Details contain specific data (e.g., specific usernames like 'performance_glitch_user', specific error strings, or specific URLs).
-        2. BEHAVIORAL FIDELITY: Ensure the 'Actions' and 'Expected Results' exactly match the logic described in the Project Details.
-        3. PROJECT IDENTITY: Test cases should explicitly name the product (e.g., 'Verify SauceDemo Login') and reference its specific components.
-        4. DATA DICTIONARY: Populate the 'test_data' field with real values found in the Project Details.
+          CRITICAL RULES:
+          1. AUTHORITATIVE DATA: Never use generic placeholders if the Project Details contain specific data (e.g., specific usernames like 'performance_glitch_user', specific error strings, or specific URLs).
+          2. BEHAVIORAL FIDELITY: Ensure the 'Actions' and 'Expected Results' exactly match the logic described in the Project Details.
+          3. PROJECT IDENTITY: Test cases should explicitly name the product (e.g., 'Verify Login') and reference its specific components.
+          4. DATA DICTIONARY: Populate the 'test_data' field with real values found in the Project Details.
+          5. LOGIN/NAVIGATION/URL STEPS (MANDATORY WHEN PRESENT IN RAG):
+              - If the Product Details mention authentication, login, SSO/MFA, base URLs, or navigation paths, you MUST include those as explicit steps inside 'Actions'.
+              - Do NOT skip initial steps (open URL, login, navigate) when they are present in the context.
+              - Each such step must be grounded in the Product Details and referenced in 'rag_ref'.
         
         For each test case, you MUST populate the 'rag_ref' field with the specific section or quote from the Project Details that justifies this test case.
         
