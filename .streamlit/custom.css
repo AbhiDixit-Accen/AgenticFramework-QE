@@ -1,0 +1,84 @@
+/* Force light theme and Accenture colors */
+:root {
+  --primary-color: #A100F2 !important;
+  --text-color: #2D2D2D !important;
+  --background-color: #ffffff !important;
+  --secondary-bg: #f8f9fa !important;
+}
+
+* {
+  color-scheme: light !important;
+}
+
+html, body {
+  background: #ffffff !important;
+  color: #2D2D2D !important;
+}
+
+/* Force all backgrounds to white */
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stMainBlockContainer"],
+section[data-testid="stSidebar"] ~ section,
+.stMainBlockContainer {
+  background: #ffffff !important;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"],
+[data-testid="stSidebar"] > * {
+  background: #f8f9fa !important;
+}
+
+/* All text */
+h1, h2, h3, h4, h5, h6,
+p, span, label,
+.stText,
+[data-testid="stMarkdownContainer"] {
+  color: #2D2D2D !important;
+}
+
+/* Buttons - make them purple */
+button {
+  background: #A100F2 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  padding: 8px 16px !important;
+}
+
+button:hover {
+  background: #7C1FB5 !important;
+}
+
+/* Input fields */
+input,
+textarea,
+select,
+[data-testid="stSelectbox"],
+[data-testid="stTextInput"],
+[data-testid="stNumberInput"] {
+  background: #ffffff !important;
+  color: #2D2D2D !important;
+  border: 1.5px solid #ddd !important;
+  border-radius: 6px !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #A100F2 !important;
+  box-shadow: 0 0 0 3px rgba(161, 0, 242, 0.1) !important;
+}
+
+/* Links */
+a {
+  color: #A100F2 !important;
+  text-decoration: none !important;
+}
+
+a:hover {
+  color: #7C1FB5 !important;
+  text-decoration: underline !important;
+}

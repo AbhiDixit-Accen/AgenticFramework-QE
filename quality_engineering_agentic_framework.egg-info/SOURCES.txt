@@ -39,11 +39,9 @@ quality_engineering_agentic_framework/web/ui/chat_bot.py
 quality_engineering_agentic_framework/web/ui/chat_tab.py
 quality_engineering_agentic_framework/web/ui/chat_ui.py
 quality_engineering_agentic_framework/web/ui/clean_app.py
+quality_engineering_agentic_framework/web/ui/login_streamlit.py
 quality_engineering_agentic_framework/web/ui/simple_app.py
 tests/__init__.py
-tests/manual_rag_verification.py
-tests/test_llm_factory.py
-tests/test_rag_integration.py
 tests/test_rag_output.py
 tests/test_requirement_interpreter.py
 tests/test_test_case_generation.py

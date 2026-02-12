@@ -1,0 +1,14 @@
+[theme]
+primaryColor = "#A100F2"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f8f9fa"
+textColor = "#2D2D2D"
+font = "sans serif"
+base = "light"
+
+[client]
+showErrorDetails = true
+toolbarMode = "minimal"
+
+[logger]
+level = "error"

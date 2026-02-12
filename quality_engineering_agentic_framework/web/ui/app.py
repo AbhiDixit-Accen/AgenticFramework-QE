@@ -9,6 +9,95 @@ import json
 import yaml
 import logging
 import streamlit as st
+st.markdown(
+        """
+        <style>
+            [data-testid="stTextInput"] input,
+            [data-testid="stPasswordInput"] input {
+                background: #fff !important;
+                border: 1.5px solid #e0e0e0 !important;
+                box-shadow: none !important;
+                color: #222 !important;
+                font-size: 16px !important;
+                padding: 10px 14px !important;
+                border-radius: 8px !important;
+            }
+            [data-testid="stTextInput"] input:focus,
+            [data-testid="stPasswordInput"] input:focus {
+                border: 1.5px solid #A100F2 !important;
+                box-shadow: 0 0 0 2px rgba(161,0,242,0.10) !important;
+            }
+            [data-testid="stTextInput"] input::placeholder,
+            [data-testid="stPasswordInput"] input::placeholder {
+                color: #b0b0b0 !important;
+                opacity: 1 !important;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True
+)
+st.markdown(
+        """
+        <style>
+            /* Engage-style textfield, password, dropdown */
+            input[type="text"], input[type="password"], textarea, select {
+                background: #fff !important;
+                border: 1.5px solid #e0e0e0 !important;
+                border-radius: 8px !important;
+                color: #222 !important;
+                font-size: 16px !important;
+                padding: 10px 14px !important;
+                box-shadow: none !important;
+                outline: none !important;
+                transition: border-color 0.2s;
+            }
+            input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus {
+                border-color: #A100F2 !important;
+                box-shadow: 0 0 0 2px rgba(161,0,242,0.10) !important;
+            }
+            input[type="text"]::placeholder, input[type="password"]::placeholder, textarea::placeholder {
+                color: #b0b0b0 !important;
+                opacity: 1 !important;
+            }
+            select {
+                color: #222 !important;
+                background: #fff !important;
+                border: 1.5px solid #e0e0e0 !important;
+                border-radius: 8px !important;
+                font-size: 16px !important;
+                padding: 10px 14px !important;
+                box-shadow: none !important;
+                outline: none !important;
+                transition: border-color 0.2s;
+            }
+            select:focus {
+                border-color: #A100F2 !important;
+                box-shadow: 0 0 0 2px rgba(161,0,242,0.10) !important;
+            }
+            [data-testid="stNumberInputContainer"] {
+                border-radius: 8px !important;
+                border: 1.5px solid #e0e0e0 !important;
+                background: #fff !important;
+                box-shadow: none !important;
+            }
+            [data-testid="stNumberInputContainer"]:focus-within {
+                border-color: #A100F2 !important;
+                box-shadow: 0 0 0 2px rgba(161,0,242,0.10) !important;
+            }
+            [data-testid="stSelectboxContainer"] {
+                border-radius: 8px !important;
+                border: 1.5px solid #e0e0e0 !important;
+                background: #fff !important;
+                box-shadow: none !important;
+            }
+            [data-testid="stSelectboxContainer"]:focus-within {
+                border-color: #A100F2 !important;
+                box-shadow: 0 0 0 2px rgba(161,0,242,0.10) !important;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True
+)
 from typing import Dict, List, Any, Optional, Union
 import tempfile
 from datetime import datetime
@@ -20,17 +109,16 @@ import random
 import string
 import pandas as pd
 from io import StringIO
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# ...existing code...
+import streamlit as st
+import os
 
-# Configure the API URL
-# Configure the API URL
-API_URL = os.environ.get("API_URL", "http://127.0.0.1:8080")
-# API_URL = "https://agenticframework-qe-4.onrender.com"
-
-# Initialize session state
+# Load shared CSS from file
+shared_css_path = os.path.join(os.path.dirname(__file__), "shared_styles.css")
+with open(shared_css_path) as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 if 'generate_data' not in st.session_state:
     st.session_state.generate_data = False
     st.session_state.test_data = None
@@ -208,6 +296,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Apply Accenture Engage theme - ULTRA AGGRESSIVE
+st.markdown(
+    """
+    """,
+    unsafe_allow_html=True,
+)
+
 # Define API URL
 # Define API URL
 API_URL = os.environ.get("API_URL", "http://127.0.0.1:8080")
@@ -343,11 +438,43 @@ def main():
         
     if 'selected_documents' not in st.session_state:
         st.session_state.selected_documents = []
-        
+    
+    # Add header banner (Engage style) - ROBUST VERSION
+    banner_html = """
+    <style>
+        .banner-wrapper {
+            background: linear-gradient(to right, #6B1B9A 0%, #7C3FA8 40%, #5B4B8A 70%, #4A5BA8 100%);
+            color: white;
+            padding: 80px 60px;
+            margin: -24px -24px 48px -24px;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .banner-wrapper h1 {
+            color: white !important;
+            font-size: 48px !important;
+            font-weight: 800 !important;
+            margin: 0 0 16px 0 !important;
+            letter-spacing: -0.8px !important;
+        }
+        .banner-wrapper p {
+            color: white !important;
+            font-size: 18px !important;
+            margin: 0 !important;
+            font-weight: 400 !important;
+            letter-spacing: 0.3px !important;
+        }
+    </style>
+    <div class='banner-wrapper'>
+        <h1>Welcome to Quality Engineering Agentic Framework</h1>
+        <p>Where Precision Meets Automation</p>
+    </div>
+    """
+    st.markdown(banner_html, unsafe_allow_html=True)
+    
     # Debug flag - set to True to see debug info
     debug = False  # Disabled by default
-    
-    st.title("Quality Engineering Agentic Framework")
     
     # Sidebar for configuration
     with st.sidebar:
@@ -720,7 +847,6 @@ def main():
             return True
         
         # Document List Section with Selection
-        st.subheader("Documents")
         
         try:
             from quality_engineering_agentic_framework.utils.rag.rag_system import DATA_PATH
@@ -731,31 +857,16 @@ def main():
                 if not files:
                     st.warning("No requirement documents found. Add documents below to get started.")
                 else:
-                    # Select/Deselect All buttons
-                    col_all, col_none, col_info = st.columns([1, 1, 3])
-                    with col_all:
-                        if st.button("✅ Select All"):
-                            st.session_state.selected_documents = files.copy()
-                            for filename in files:
-                                st.session_state[f"select_{filename}"] = True
-                            st.rerun()
-                    with col_none:
-                        if st.button("❌ Deselect All"):
-                            st.session_state.selected_documents = []
-                            for filename in files:
-                                st.session_state[f"select_{filename}"] = False
-                            st.rerun()
-                    with col_info:
-                        st.caption(f"{len(st.session_state.selected_documents)} of {len(files)} documents selected")
-                    
+                    # Document count display
+                    st.caption(f"{len(st.session_state.selected_documents)} of {len(files)} documents selected")
                     st.divider()
                     
                     # Display documents with checkboxes and delete buttons
-                    # Add CSS to make checkbox green when selected and align elements
+                    # Add CSS to make checkbox purple when selected and align elements
                     st.markdown("""
                     <style>
                     [data-baseweb="checkbox"] {
-                        filter: hue-rotate(120deg) saturate(1.2) !important;
+                        accent-color: #A100F2 !important;
                     }
                     [data-testid="stColumn"] {
                         vertical-align: middle !important;
@@ -815,7 +926,7 @@ def main():
                             st.caption(f"{file_stats.st_size:,} bytes")
                         
                         with col4:
-                            if st.button("🗑️", key=f"del_{filename}", help="Delete document"):
+                            if st.button("🗑️", key=f"del_{filename}", help="Delete document", type="primary"):
                                 try:
                                     os.remove(file_path)
                                     if filename in st.session_state.selected_documents:
@@ -1139,7 +1250,7 @@ def main():
                     
                     # Display the uploaded test cases
                     st.subheader("Uploaded Test Cases")
-                    st.dataframe(df, use_container_width=True)
+                    st.dataframe(df, width='stretch')
                     
                     # Store the test cases in a temporary session variable for standalone
                     st.session_state.standalone_test_cases = df.to_dict('records')
@@ -1493,8 +1604,11 @@ if __name__ == "__main__":
     try:
         import nest_asyncio
         nest_asyncio.apply()
+    except RuntimeError:
+        # Silently ignore - uvloop and other loop types don't support patching
+        pass
     except Exception as e:
-        # Just log warning, don't crash if it fails (e.g. incompatible loop type)
+        # Just log warning for other exceptions, don't crash
         print(f"Warning: Could not apply nest_asyncio: {e}")
     
     # Start the Streamlit app

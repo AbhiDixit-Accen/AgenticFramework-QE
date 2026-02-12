@@ -1,0 +1,42 @@
+[data-testid^="stBaseButton-"] {
+	background: #fff !important;
+	background-color: #fff !important;
+	color: #A100F2 !important;
+	border: 2px solid #A100F2 !important;
+}
+[data-testid^="stBaseButton-"] * {
+	background: #fff !important;
+	background-color: #fff !important;
+}
+[data-testid^="stBaseButton-"]:hover,
+[data-testid^="stBaseButton-"]:active,
+[data-testid^="stBaseButton-"]:focus {
+	background: #fff !important;
+	background-color: #fff !important;
+}
+# Set background to white for stBaseButton-primary
+[data-testid="stBaseButton-primary"] {
+	background: #fff !important;
+	background-color: #fff !important;
+	color: #A100F2 !important;
+	border: 2px solid #A100F2 !important;
+}
+[data-testid="stBaseButton-primary"] * {
+	background: #fff !important;
+	background-color: #fff !important;
+}
+[data-testid="stBaseButton-primary"]:hover,
+[data-testid="stBaseButton-primary"]:active,
+[data-testid="stBaseButton-primary"]:focus {
+	background: #fff !important;
+	background-color: #fff !important;
+}
+# Set background to white for stMarkdownContainer
+[data-testid="stMarkdownContainer"] {
+	background: #fff !important;
+}
+/* Remove background for element with id="bui8__anchor" */
+#bui8__anchor {
+	background: none !important;
+	background-color: transparent !important;
+}
